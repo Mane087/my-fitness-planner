@@ -1,0 +1,7 @@
+@media screen and (max-width: 1400px) {
+  th {
+    font-size: 18px;
+    height: 35px;
+    padding: 4px 8px;
+  }
+}

@@ -1,0 +1,32 @@
+<table class="w-full h-max border-collapse table-auto">
+  <thead>
+    <tr class="w-full">
+      @for (column of columns(); track $index) {
+        <th
+          class="h-[50px] w-auto px-4 py-2 text-left bg-[#606D80] text-white text-[20px] sticky top-0"
+        >
+          {{ column.title }}
+        </th>
+      }
+    </tr>
+  </thead>
+  <tbody>
+    @for (row of data(); track trackById($index, row)) {
+      <tr
+        class="h-[66px] border-b border-[#d8d8d8] transition-all ease-in-out hover:bg-[#e1e3ee] cursor-pointer"
+        [ngClass]="{ 'bg-[#d1d3e2]': selected === row.row }"
+        (click)="selectRow(row.row)"
+      >
+        @for (column of columns(); track $index) {
+          <td class="px-4 py-2 whitespace-nowrap text-[#1E1E1E] text-[14px] w-auto">
+            {{ row.row[column.key] }}
+          </td>
+        }
+      </tr>
+    } @empty {
+      <tr>
+        <td class="px-4 py-2 text-center text-[#1E1E1E]">No hay datos que mostrar.</td>
+      </tr>
+    }
+  </tbody>
+</table>

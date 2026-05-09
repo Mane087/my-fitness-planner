@@ -1,0 +1,25 @@
+<div
+  class="flex items-center justify-between min-w-[260px] max-w-max p-4 rounded-lg shadow absolute bottom-5 right-5 z-30"
+  role="alert"
+  [ngClass]="config().container"
+  [attr.id]="typeAlert()"
+>
+  <div
+    class="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-white"
+    [ngClass]="config().container"
+  >
+    <svg
+      class="w-6 h-6"
+      aria-hidden="true"
+      xmlns="http://www.w3.org/2000/svg"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+    >
+      <path [attr.d]="config().svgPath" />
+    </svg>
+    <span class="sr-only">{{ config().iconLabel }}</span>
+  </div>
+  <div class="ms-3 text-base font-normal text-center min-w-[180px] max-w-max text-gray-500">
+    {{ alertMessage() }}
+  </div>
+</div>

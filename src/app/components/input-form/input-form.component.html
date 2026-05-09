@@ -1,0 +1,20 @@
+<div class="flex flex-col gap-y-2">
+  <label [for]="inputId()" class="text-[18px] font-medium">
+    {{ labelText() }}
+  </label>
+
+  <input
+    #input
+    [id]="inputId()"
+    [type]="inputType()"
+    [placeholder]="inputPlaceholder()"
+    [value]="value()"
+    [disabled]="disabled()"
+    [attr.step]="inputType() === 'number' && activateStep() ? '0.10' : null"
+    [attr.maxlength]="activateMax() ? inputMaxValue() : null"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+    (keydown)="onKeyDown($event)"
+    class="border bg-white w-[280px] h-[45px] rounded-[10px] px-5"
+  />
+</div>
