@@ -1,0 +1,11 @@
+:host {
+  display: block;
+}
+
+.hero {
+  background-color: #1a1a2e;
+  background-image: url('/home_page.webp');
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
