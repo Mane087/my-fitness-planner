@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, input, signal } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { AlertType } from '../../core/types/alert';
 import { AlertConfig } from '../../core/interfaces/alert';
 
@@ -12,8 +12,8 @@ import { AlertConfig } from '../../core/interfaces/alert';
 export class AlertComponent {
   private alertConfig: Record<AlertType, AlertConfig> = {
     'toast-success': {
-      container: 'bg-green-100',
-      iconClass: 'text-green-700 bg-green-100',
+      container: 'bg-green-200',
+      iconClass: 'text-green-600 bg-green-200',
       iconLabel: 'Check icon',
       svgPath:
         'M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z',
@@ -36,11 +36,11 @@ export class AlertComponent {
 
   typeAlert = input.required<AlertType>();
   alertMessage = input.required<string>();
-  showAlert = signal<boolean>(false);
+  showAlert = output<boolean>();
 
   config = computed(() => this.alertConfig[this.typeAlert()]);
 
   dismissAlert() {
-    this.showAlert.set(false);
+    this.showAlert.emit(false);
   }
 }

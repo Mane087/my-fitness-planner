@@ -1,15 +1,15 @@
 <div
-  class="flex items-center justify-between min-w-[260px] max-w-max p-4 rounded-lg shadow absolute bottom-5 right-5 z-30"
+  class="absolute top-10 right-8 z-50 flex min-w-[300px] max-w-[420px] items-center justify-between gap-x-3 rounded-lg p-4 shadow-lg"
   role="alert"
   [ngClass]="config().container"
   [attr.id]="typeAlert()"
 >
   <div
-    class="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-white"
-    [ngClass]="config().container"
+    class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+    [ngClass]="config().iconClass"
   >
     <svg
-      class="w-6 h-6"
+      class="h-5 w-5"
       aria-hidden="true"
       xmlns="http://www.w3.org/2000/svg"
       fill="currentColor"
@@ -17,9 +17,20 @@
     >
       <path [attr.d]="config().svgPath" />
     </svg>
+
     <span class="sr-only">{{ config().iconLabel }}</span>
   </div>
-  <div class="ms-3 text-base font-normal text-center min-w-[180px] max-w-max text-gray-500">
+
+  <div class="flex-1 text-sm font-medium text-slate-700">
     {{ alertMessage() }}
   </div>
+
+  <button
+    type="button"
+    class="inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-600 transition hover:bg-white/50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-white cursor-pointer"
+    aria-label="Cerrar alerta"
+    (click)="dismissAlert()"
+  >
+    ✕
+  </button>
 </div>

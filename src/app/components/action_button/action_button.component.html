@@ -1,0 +1,9 @@
+<button
+  type="button"
+  [title]="title()"
+  (click)="onClick()"
+  class="flex min-h-11 w-fit items-center justify-center gap-3 rounded-lg px-2 py-3 text-base font-semibold text-text-primary transition focus:outline-none focus-visible:ring-4 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer bg-secondary border border-border hover:bg-white/10 focus-visible:ring-white/30"
+>
+  {{ label() }}
+  <img [src]="icon()" alt="icon" class="w-5 h-5" />
+</button>

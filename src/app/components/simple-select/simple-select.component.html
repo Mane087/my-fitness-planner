@@ -1,0 +1,27 @@
+<label class="flex flex-col gap-y-2 text-[18px] font-medium" [attr.for]="selectId()">
+  {{ label() }}
+
+  <select
+    [id]="selectId()"
+    [value]="stringifyValue(value)"
+    [disabled]="isDisabled"
+    class="input"
+    [ngClass]="{
+      'cursor-not-allowed opacity-60': isDisabled,
+    }"
+    (change)="handleChange($event)"
+    (blur)="handleBlur()"
+  >
+    @if (showPlaceholder()) {
+      <option value="">
+        {{ placeholder() }}
+      </option>
+    }
+
+    @for (option of options(); track option.value) {
+      <option [value]="stringifyValue(option.value)" [disabled]="option.disabled">
+        {{ option.label }}
+      </option>
+    }
+  </select>
+</label>
