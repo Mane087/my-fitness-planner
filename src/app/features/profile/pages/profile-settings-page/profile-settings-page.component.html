@@ -1,0 +1,165 @@
+<main class="relative h-dvh bg-slate-950 py-5 text-slate-100">
+  @if (showSuccessAlert()) {
+    <app-alert
+      [typeAlert]="typeAlert()"
+      [alertMessage]="alertMessage()"
+      (showAlert)="closeSuccessAlert($event)"
+    />
+  }
+  <section class="mx-auto flex w-full max-w-6xl flex-col gap-4">
+    <header class="flex items-center sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-4xl font-bold tracking-tight">Datos del perfil</h2>
+      <a
+        routerLink="/"
+        class="text-sm font-semibold text-cyan-200 hover:text-cyan-100 flex items-center gap-x-2"
+      >
+        <img src="/icons/back.svg" alt="" />
+        Volver al inicio
+      </a>
+    </header>
+
+    @if (loading()) {
+      <div class="rounded-2xl bg-white/10 p-6 text-center">Cargando configuración...</div>
+    } @else {
+      <form
+        class="flex flex-col gap-8"
+        [formGroup]="profileForm"
+        (ngSubmit)="saveProfileAndZones()"
+      >
+        <section class="rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20">
+          <div class="grid gap-6 grid-cols-3">
+            <app-input-form
+              formControlName="name"
+              labelText="Usuario"
+              inputId="profile-name"
+              inputPlaceholder="Tu nombre"
+              -
+            />
+
+            <app-input-form
+              formControlName="maxHeartRate"
+              labelText="FC máxima (ppm)"
+              inputType="number"
+              inputId="max-heart-rate"
+              inputPlaceholder="100-230"
+            />
+
+            <app-input-form
+              formControlName="weightKg"
+              labelText="Peso (kg)"
+              inputType="number"
+              inputId="weight-kg"
+              inputPlaceholder="80"
+            />
+
+            <app-simple-select
+              [options]="weekStartOptions"
+              formControlName="weekStartsOn"
+              label="Inicio de la semana"
+              selectId="week-starts-on"
+            />
+
+            <app-simple-select
+              [options]="intesityMetricOptions"
+              formControlName="preferredIntensityMetric"
+              label="Métrica de entrenamiento"
+              selectId="preferred-intensity-metric"
+            />
+          </div>
+        </section>
+        <h2 class="text-4xl font-bold">Zonas de entrenamiento</h2>
+        <section
+          class="max-h-[450px] rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20 overflow-y-auto no-scrollbar"
+        >
+          <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <app-action-button
+              label="Agregar zona"
+              icon="/icons/plus.svg"
+              title="Agregar zona"
+              (pressed)="addZone()"
+            />
+          </div>
+
+          <div class="overflow-x-auto" [formGroup]="zonesForm">
+            <table class="w-full min-w-[860px] border-collapse">
+              <thead>
+                <tr class="bg-[#606D80] text-left text-white">
+                  <th class="px-4 py-3">Zone</th>
+                  <th class="px-4 py-3">Minimum (ppm)</th>
+                  <th class="px-4 py-3">Maximum (ppm)</th>
+                  <th class="px-4 py-3">Description</th>
+                  <th class="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody formArrayName="zones">
+                @for (zone of zones.controls; track trackZone($index); let index = $index) {
+                  <tr class="border-b border-slate-200" [formGroupName]="index">
+                    <td class="px-4 py-3">
+                      <input formControlName="name" class="input" aria-label="Nombre de zona" />
+                    </td>
+                    <td class="px-4 py-3">
+                      <input
+                        formControlName="minHeartRate"
+                        type="number"
+                        class="input"
+                        aria-label="Mínimo de zona"
+                      />
+                    </td>
+                    <td class="px-4 py-3">
+                      <input
+                        formControlName="maxHeartRate"
+                        type="number"
+                        class="input"
+                        aria-label="Máximo de zona"
+                      />
+                    </td>
+                    <td class="px-4 py-3">
+                      <input
+                        formControlName="description"
+                        class="input min-w-[260px]"
+                        aria-label="Descripción de zona"
+                      />
+                    </td>
+                    <td class="px-4 py-3">
+                      <button
+                        type="button"
+                        class="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+                        (click)="deleteZone(index)"
+                      >
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="5" class="px-4 py-6 text-center text-slate-500">
+                      No hay zonas configuradas.
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <app-button
+            label="Cancelar"
+            title="cancelar"
+            variant="secondary"
+            (pressed)="cancel()"
+            [disabled]="saving()"
+          />
+          <app-button
+            [label]="saving() ? 'Guardando...' : 'Guardar cambios'"
+            title="guardar"
+            kind="action"
+            htmlType="submit"
+            variant="primary"
+            [disabled]="saving()"
+          />
+        </div>
+      </form>
+    }
+  </section>
+</main>

@@ -18,14 +18,14 @@
         base miles to race day.
       </p>
 
-      <div class="mt-10 flex justify-center sm:justify-start">
-        <a
-          routerLink="/calendar"
-          class="inline-flex min-h-11 items-center justify-center rounded-full bg-btn-primary px-7 py-3 text-base font-semibold text-text-secondary shadow-lg shadow-cyan-950/30 transition hover:bg-btn-primary-hover focus:outline-none focus-visible:ring-4 focus-visible:ring-btn-primary-hover focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 cursor-pointer"
-          aria-label="Go to the training calendar"
-        >
-          Go to Training Calendar
-        </a>
+      <div class="mt-10 flex flex-col gap-4 sm:flex-row sm:justify-start">
+        <app-button
+          label="Go to Training Calendar"
+          title="Go to Training Calendar"
+          kind="action"
+          variant="primary"
+          (pressed)="onNavigateToCalendar()"
+        />
       </div>
     </div>
   </section>

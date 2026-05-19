@@ -1,0 +1,15 @@
+@if (kind() === 'link') {
+  <a [routerLink]="link()" [title]="title()" [ngClass]="classes">
+    {{ label() }}
+  </a>
+} @else {
+  <button
+    [type]="htmlType()"
+    [title]="title()"
+    [ngClass]="classes"
+    (click)="onClick()"
+    [disabled]="disabled()"
+  >
+    {{ label() }}
+  </button>
+}
