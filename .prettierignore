@@ -7,3 +7,6 @@ pnpm-lock.yaml
 .vscode
 public
 **/*.min.*
+test-results
+playwright-report
+blob-report
