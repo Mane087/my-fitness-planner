@@ -1,4 +1,5 @@
 {
     "window.zoomLevel": 1,
-    "editor.fontSize": 14
+    "editor.fontSize": 14,
+    "npm.packageManager": "pnpm"
 }
