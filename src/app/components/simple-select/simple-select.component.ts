@@ -1,5 +1,5 @@
 import { NgClass } from '@angular/common';
-import { Component, forwardRef, input } from '@angular/core';
+import { Component, forwardRef, input, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
 export type SelectOptionValue = string | number | boolean | null;
@@ -30,8 +30,8 @@ export class SimpleSelectComponent implements ControlValueAccessor {
   selectId = input<string>('');
   showPlaceholder = input<boolean>(true);
 
-  value: SelectOptionValue = '';
-  isDisabled = false;
+  value = signal<SelectOptionValue>('');
+  isDisabled = signal(false);
 
   private onChange: (value: SelectOptionValue) => void = () => {
     /* empty */
@@ -41,7 +41,7 @@ export class SimpleSelectComponent implements ControlValueAccessor {
   };
 
   writeValue(value: SelectOptionValue): void {
-    this.value = value ?? '';
+    this.value.set(value ?? '');
   }
 
   registerOnChange(fn: (value: SelectOptionValue) => void): void {
@@ -53,14 +53,14 @@ export class SimpleSelectComponent implements ControlValueAccessor {
   }
 
   setDisabledState(isDisabled: boolean): void {
-    this.isDisabled = isDisabled;
+    this.isDisabled.set(isDisabled);
   }
 
   handleChange(event: Event): void {
     const selectElement = event.target as HTMLSelectElement;
     const selectedValue = this.parseValue(selectElement.value);
 
-    this.value = selectedValue;
+    this.value.set(selectedValue);
     this.onChange(selectedValue);
   }
 
