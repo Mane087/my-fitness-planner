@@ -1,24 +1,31 @@
-<div class="relative w-fit h-fit">
-  <!-- Selected value -->
+<p class="font-semibold">{{ label() }}</p>
+<div class="relative w-full mt-2">
   <button
     type="button"
     [title]="titleSelect()"
-    class="w-full h-max flex items-center bg-none cursor-pointer"
+    class="min-h-10 flex items-center justify-between gap-x-2 rounded-[0.625rem] bg-white px-3 py-2 text-base text-slate-900 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+    [ngClass]="simple() ? simpleClass() : 'w-full border border-slate-300'"
+    [disabled]="disabled()"
     (click)="toggleDropdown()"
   >
-    <img [src]="defaultOption()" alt="icon-default" class="w-5 h-5" />
-    <img src="icons/down.svg" alt="icon-default" class="w-5 h-5" />
+    <span class="flex items-center gap-x-2">
+      @if (currentSelection()?.icon || defaultOption()) {
+        <img [src]="currentSelection()?.icon || defaultOption()" alt="" class="w-5 h-5" />
+      }
+      <span>{{ currentSelection()?.label }}</span>
+    </span>
+    <img src="/icons/down.svg" alt="down" class="w-5 h-5" />
   </button>
 
   @if (isOpen()) {
     <ul
-      class="absolute w-max top-full left-0 right-0 bg-[#343434] border border-[#ccc] rounded-lg mt-1 z-50 overflow-hidden"
+      class="absolute w-full top-full left-0 right-0 bg-white border border-[#ccc] rounded-lg mt-1 z-50 overflow-hidden"
       (mouseleave)="close()"
       tabindex="0"
     >
       @for (option of options(); track option.value) {
         <li
-          class="flex items-center gap-x-2 px-2.5 py-2 cursor-pointer text-white hover:bg-[#4b4b4b] transition-all ease-in-out"
+          class="flex items-center gap-x-2 px-2.5 py-2 cursor-pointer text-[#343434] hover:bg-[#e0e0e0cc] transition-all ease-in-out"
           (click)="selectOption(option)"
           (keydown.enter)="selectOption(option)"
           (keydown.space)="selectOption(option)"

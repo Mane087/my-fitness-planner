@@ -1,12 +1,12 @@
 import { Component, forwardRef, input, signal, ViewChild, ElementRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { CommonModule } from '@angular/common';
+
 import { InputType } from '../../core/types/input-type';
 
 @Component({
   selector: 'app-input-form',
   standalone: true,
-  imports: [CommonModule],
+  imports: [],
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,

@@ -33,7 +33,6 @@
               labelText="Usuario"
               inputId="profile-name"
               inputPlaceholder="Tu nombre"
-              -
             />
 
             <app-input-form
@@ -52,24 +51,24 @@
               inputPlaceholder="80"
             />
 
-            <app-simple-select
+            <app-select
               [options]="weekStartOptions"
               formControlName="weekStartsOn"
               label="Inicio de la semana"
-              selectId="week-starts-on"
+              titleSelect="Inicio de la semana"
             />
 
-            <app-simple-select
+            <app-select
               [options]="intesityMetricOptions"
               formControlName="preferredIntensityMetric"
               label="Métrica de entrenamiento"
-              selectId="preferred-intensity-metric"
+              titleSelect="Métrica de entrenamiento"
             />
           </div>
         </section>
         <h2 class="text-4xl font-bold">Zonas de entrenamiento</h2>
         <section
-          class="max-h-[450px] rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20 overflow-y-auto no-scrollbar"
+          class="max-h-112.5 rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20 overflow-y-auto no-scrollbar"
         >
           <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <app-action-button
@@ -81,7 +80,7 @@
           </div>
 
           <div class="overflow-x-auto" [formGroup]="zonesForm">
-            <table class="w-full min-w-[860px] border-collapse">
+            <table class="w-full min-w-215 border-collapse">
               <thead>
                 <tr class="bg-[#606D80] text-left text-white">
                   <th class="px-4 py-3">Zone</th>
@@ -116,7 +115,7 @@
                     <td class="px-4 py-3">
                       <input
                         formControlName="description"
-                        class="input min-w-[260px]"
+                        class="input min-w-65"
                         aria-label="Descripción de zona"
                       />
                     </td>

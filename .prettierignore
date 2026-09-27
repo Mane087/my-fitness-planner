@@ -1,9 +1,12 @@
 dist
 coverage
 node_modules
-package-lock.json
+pnpm-lock.yaml
 .angular
 .husky
 .vscode
 public
 **/*.min.*
+test-results
+playwright-report
+blob-report

@@ -3,11 +3,11 @@
 
   <select
     [id]="selectId()"
-    [value]="stringifyValue(value)"
-    [disabled]="isDisabled"
+    [value]="stringifyValue(value())"
+    [disabled]="isDisabled()"
     class="input"
     [ngClass]="{
-      'cursor-not-allowed opacity-60': isDisabled,
+      'cursor-not-allowed opacity-60': isDisabled(),
     }"
     (change)="handleChange($event)"
     (blur)="handleBlur()"

@@ -2,10 +2,13 @@ import {
   WORKOUT_DISCIPLINES,
   WORKOUT_STATUSES,
   WORKOUT_TYPES,
+  INTENSITY_METRICS,
+  type IntensityMetric,
   type WorkoutDiscipline,
   type WorkoutStatus,
   type WorkoutType,
 } from '../domain/workout.enums';
+import { WorkoutBlockTargetType } from '../domain/workout-block.model';
 import type { WorkoutBlockEntity } from '../domain/workout-block.model';
 
 const DATE_ONLY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -65,14 +68,48 @@ export function isWorkoutStatus(value: string): value is WorkoutStatus {
   return WORKOUT_STATUSES.includes(value as WorkoutStatus);
 }
 
+export function isIntensityMetric(value: string): value is IntensityMetric {
+  return INTENSITY_METRICS.includes(value as IntensityMetric);
+}
+
 export function assertValidBlocks(blocks: WorkoutBlockEntity[]): void {
-  for (const block of blocks) {
+  const ids = new Set<string>();
+
+  for (const [index, block] of blocks.entries()) {
+    if (!block.name.trim()) {
+      throw new Error('Workout block name is required.');
+    }
+
     if (block.durationMinutes <= 0) {
       throw new Error('Workout block duration must be greater than 0.');
     }
 
-    if (!Number.isFinite(block.sortOrder)) {
-      throw new Error('Workout block sort order is required.');
+    if (block.sortOrder !== index + 1) {
+      throw new Error('Workout block sort order must be sequential.');
+    }
+
+    if (ids.has(block.id)) {
+      throw new Error('Workout block IDs must be unique.');
+    }
+    ids.add(block.id);
+
+    if (
+      block.targetType === WorkoutBlockTargetType.Distance &&
+      (!block.distanceKm || block.distanceKm <= 0)
+    ) {
+      throw new Error('Distance-based workout blocks require a distance greater than 0.');
+    }
+
+    if (block.targetRpe !== undefined && (block.targetRpe < 1 || block.targetRpe > 10)) {
+      throw new Error('Workout block RPE must be between 1 and 10.');
+    }
+
+    if (
+      block.cadenceMin !== undefined &&
+      block.cadenceMax !== undefined &&
+      block.cadenceMin > block.cadenceMax
+    ) {
+      throw new Error('Workout block minimum cadence cannot exceed maximum cadence.');
     }
   }
 }

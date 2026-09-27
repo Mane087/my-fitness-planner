@@ -1,0 +1,47 @@
+:host {
+  display: block;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.day-cell {
+  min-height: 11rem;
+  border-bottom: 1px solid rgb(30 41 59);
+  border-right: 1px solid rgb(30 41 59);
+  background: rgb(15 23 42 / 0.72);
+  padding: 0.75rem;
+  position: relative;
+}
+
+.day-cell:nth-child(7n) {
+  border-right: 0;
+}
+
+.day-cell:nth-last-child(-n + 7) {
+  border-bottom: 0;
+}
+
+.workout-card {
+  width: 100%;
+  border-radius: 0.75rem;
+  border-bottom: 1px solid rgb(51 65 85);
+  border-right: 1px solid rgb(51 65 85);
+  border-top: 1px solid rgb(51 65 85);
+  background: rgb(2 6 23 / 0.78);
+  padding: 0.5rem 0.6rem;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.workout-card:hover,
+.workout-card:focus-visible {
+  background: rgb(30 41 59 / 0.92);
+  outline: 2px solid rgb(96 165 250);
+  outline-offset: 2px;
+  transform: translateY(-1px);
+}
