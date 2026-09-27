@@ -1,4 +1,4 @@
-<main class="relative h-dvh bg-slate-950 py-5 text-slate-100">
+<main class="relative min-h-dvh bg-slate-950 px-4 py-5 text-slate-100">
   @if (showSuccessAlert()) {
     <app-alert
       [typeAlert]="typeAlert()"
@@ -171,5 +171,8 @@
         </div>
       </form>
     }
+
+    <!-- Outside the loading block: reloading the profile after an import must keep its status message. -->
+    <app-backup-section (imported)="loadProfileSettings()" />
   </section>
 </main>

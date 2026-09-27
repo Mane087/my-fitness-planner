@@ -35,6 +35,7 @@ import { Options } from '../../core/models/option';
 import { ActionButtonComponent } from '../../components/action-button/action-button.component';
 import { ButtonComponent } from '../../components/button/button.component';
 import { AlertComponent } from '../../components/alert/alert.component';
+import { BackupSectionComponent } from './backup-section.component';
 import { AlertType } from '../../core/models/alert';
 import { RouterLink } from '@angular/router';
 
@@ -69,6 +70,7 @@ const MAX_HEART_RATE = 250;
     ActionButtonComponent,
     ButtonComponent,
     AlertComponent,
+    BackupSectionComponent,
   ],
   templateUrl: './profile-settings-page.component.html',
   styleUrl: './profile-settings-page.component.css',

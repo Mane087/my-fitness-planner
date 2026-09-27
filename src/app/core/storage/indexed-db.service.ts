@@ -71,6 +71,80 @@ export class IndexedDbService {
     );
   }
 
+  /** Reads every record of several stores inside one readonly transaction (consistent snapshot). */
+  async readStores<StoreName extends IndexedDbStore>(
+    storeNames: readonly StoreName[],
+  ): Promise<{ [Name in StoreName]: IndexedDbSchema[Name][] }> {
+    const database = await this.openDatabase();
+
+    return new Promise((resolve, reject) => {
+      const records = {} as { [Name in StoreName]: IndexedDbSchema[Name][] };
+      let transaction: IDBTransaction;
+
+      try {
+        transaction = database.transaction(storeNames, 'readonly');
+
+        for (const storeName of storeNames) {
+          const request = transaction.objectStore(storeName).getAll();
+          request.onsuccess = () => {
+            records[storeName] = request.result as IndexedDbSchema[StoreName][];
+          };
+        }
+      } catch (error) {
+        this.invalidateDatabase(database);
+        reject(toStorageError(error, 'Local storage query failed.'));
+        return;
+      }
+
+      transaction.oncomplete = () => resolve(records);
+      transaction.onerror = () =>
+        reject(toStorageError(transaction.error, 'Local storage transaction failed.'));
+      transaction.onabort = () =>
+        reject(toStorageError(transaction.error, 'Local storage transaction was cancelled.'));
+    });
+  }
+
+  /**
+   * Clears the given stores and writes the new records inside one readwrite transaction.
+   * Any failed write aborts the transaction, so the previous data stays intact.
+   */
+  async replaceStores(records: {
+    [Name in IndexedDbStore]?: readonly IndexedDbSchema[Name][];
+  }): Promise<void> {
+    const database = await this.openDatabase();
+    const storeNames = Object.keys(records) as IndexedDbStore[];
+
+    return new Promise((resolve, reject) => {
+      let transaction: IDBTransaction;
+
+      try {
+        transaction = database.transaction(storeNames, 'readwrite');
+
+        for (const storeName of storeNames) {
+          const store = transaction.objectStore(storeName);
+          store.clear();
+
+          for (const record of records[storeName] ?? []) {
+            store.put(record);
+          }
+        }
+      } catch (error) {
+        this.invalidateDatabase(database);
+        reject(toStorageError(error, 'Local storage write failed.'));
+        return;
+      }
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = (event) => {
+        // Keep the first error; the abort event that follows carries the same cause.
+        event.preventDefault();
+        transaction.abort();
+      };
+      transaction.onabort = () =>
+        reject(toStorageError(transaction.error, 'Local storage transaction was cancelled.'));
+    });
+  }
+
   private openDatabase(): Promise<IDBDatabase> {
     if (this.databasePromise) {
       return this.databasePromise;
