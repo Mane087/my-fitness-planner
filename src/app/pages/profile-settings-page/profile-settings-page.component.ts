@@ -10,25 +10,23 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { InputFormComponent } from '../../../../components/input-form/input-form.component';
+import { InputFormComponent } from '../../components/input-form/input-form.component';
 import {
   PreferredDiscipline,
   PreferredIntensityMetric,
   WeekStartsOn,
   type SportProfileEntity,
-} from '../../../../core/domain/sport-profile.model';
-import type { TrainingZoneEntity } from '../../../../core/domain/training-zone.model';
-import { SportProfileRepository } from '../../../../core/repositories/sport-profile.repository';
-import { createId, nowIso } from '../../../../core/repositories/repository-utils';
-import { TrainingZoneRepository } from '../../../../core/repositories/training-zone.repository';
-import {
-  SimpleSelectComponent,
-  SimpleSelectOption,
-} from '../../../../components/simple-select/simple-select.component';
-import { ActionButtonComponent } from '../../../../components/action_button/action_button.component';
-import { ButtonComponent } from '../../../../components/button/button.component';
-import { AlertComponent } from '../../../../components/alert/alert.component';
-import { AlertType } from '../../../../core/types/alert';
+} from '../../core/domain/sport-profile.model';
+import type { TrainingZoneEntity } from '../../core/domain/training-zone.model';
+import { SportProfileRepository } from '../../core/repositories/sport-profile.repository';
+import { createId, nowIso } from '../../core/repositories/repository-utils';
+import { TrainingZoneRepository } from '../../core/repositories/training-zone.repository';
+import { SelectComponent } from '../../components/select/select.component';
+import { Options } from '../../core/types/option';
+import { ActionButtonComponent } from '../../components/action_button/action_button.component';
+import { ButtonComponent } from '../../components/button/button.component';
+import { AlertComponent } from '../../components/alert/alert.component';
+import { AlertType } from '../../core/types/alert';
 import { RouterLink } from '@angular/router';
 
 const DEFAULT_ZONE_PERCENTAGES = [
@@ -94,7 +92,7 @@ interface ZoneFormControls {
     InputFormComponent,
     ReactiveFormsModule,
     RouterLink,
-    SimpleSelectComponent,
+    SelectComponent,
     ActionButtonComponent,
     ButtonComponent,
     AlertComponent,
@@ -116,7 +114,7 @@ export class ProfileSettingsPageComponent {
   readonly isDirty = signal(false);
   showSuccessAlert = signal(false);
   typeAlert = signal<AlertType>('toast-success');
-  readonly weekStartOptions: SimpleSelectOption[] = [
+  readonly weekStartOptions: Options[] = [
     {
       label: 'Lunes',
       value: 'monday',
@@ -126,7 +124,7 @@ export class ProfileSettingsPageComponent {
       value: 'sunday',
     },
   ];
-  readonly intesityMetricOptions: SimpleSelectOption[] = [
+  readonly intesityMetricOptions: Options[] = [
     {
       label: 'Frecuencia cardiaca',
       value: 'heartRate',
