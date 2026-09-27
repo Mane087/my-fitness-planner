@@ -1,0 +1,72 @@
+<section
+  aria-labelledby="backup-title"
+  class="rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20"
+>
+  <h2 id="backup-title" class="text-2xl font-bold">Respaldo de datos</h2>
+  <p class="mt-2 text-slate-600">
+    Tus datos solo se guardan en este navegador. Descarga un respaldo para no perderlos o para
+    pasarlos a otro navegador.
+  </p>
+
+  <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center">
+    <app-button
+      [label]="isExporting() ? 'Generando respaldo...' : 'Exportar respaldo'"
+      title="Descargar un respaldo en JSON"
+      variant="primary"
+      [disabled]="isExporting() || isImporting()"
+      (pressed)="exportBackup()"
+    />
+
+    <label
+      class="inline-flex min-h-11 cursor-pointer items-center justify-center rounded-lg border border-slate-300 px-4 py-3 font-semibold text-slate-900 hover:bg-slate-100 focus-within:ring-4 focus-within:ring-cyan-200"
+    >
+      Importar respaldo
+      <input
+        type="file"
+        accept="application/json,.json"
+        class="sr-only"
+        data-testid="backup-file-input"
+        [disabled]="isImporting()"
+        (change)="selectFile($event)"
+      />
+    </label>
+  </div>
+
+  @if (status(); as message) {
+    <p
+      class="mt-4 rounded-lg px-4 py-3 text-sm"
+      [class.bg-red-50]="message.isError"
+      [class.text-red-800]="message.isError"
+      [class.bg-emerald-50]="!message.isError"
+      [class.text-emerald-800]="!message.isError"
+      [attr.role]="message.isError ? 'alert' : 'status'"
+    >
+      {{ message.text }}
+    </p>
+  }
+</section>
+
+<app-modal [showModal]="pendingImport() !== null" labelledBy="backup-import-title">
+  <h3 id="backup-import-title" class="text-xl font-bold">¿Reemplazar todos tus datos?</h3>
+  <p class="mt-3 text-slate-700">
+    Importar <strong>{{ pendingImport()?.fileName }}</strong> reemplazará tus entrenamientos,
+    plantillas, zonas, perfil y configuración actuales. Esta acción no se puede deshacer.
+  </p>
+  <p class="mt-2 text-sm text-slate-500">Si el archivo no es válido, no se modifica ningún dato.</p>
+  <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <app-button
+      label="Cancelar"
+      title="Cancelar la importación"
+      variant="secondary"
+      [disabled]="isImporting()"
+      (pressed)="cancelImport()"
+    />
+    <app-button
+      [label]="isImporting() ? 'Importando...' : 'Importar y reemplazar'"
+      title="Confirmar la importación"
+      variant="primary"
+      [disabled]="isImporting()"
+      (pressed)="confirmImport()"
+    />
+  </div>
+</app-modal>
