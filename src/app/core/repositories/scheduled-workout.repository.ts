@@ -14,6 +14,10 @@ import { assertDateOnly, cloneValue, createId, nowIso, parseEntity } from './rep
 export class ScheduledWorkoutRepository {
   private readonly indexedDb = inject(IndexedDbService);
 
+  findAll(): Promise<ScheduledWorkoutEntity[]> {
+    return this.indexedDb.getAll(IndexedDbStore.ScheduledWorkouts);
+  }
+
   async findByDate(date: string): Promise<ScheduledWorkoutEntity[]> {
     assertDateOnly(date);
     return this.indexedDb.getAllFromIndex(

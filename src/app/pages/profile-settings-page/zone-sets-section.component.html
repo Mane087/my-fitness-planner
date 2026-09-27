@@ -1,0 +1,28 @@
+<section class="flex flex-col gap-4" aria-labelledby="zone-sets-title">
+  <div>
+    <h2 id="zone-sets-title" class="text-4xl font-bold">Zonas de entrenamiento</h2>
+    <p class="mt-2 text-slate-300">
+      Configura las zonas de cada deporte a partir de tu FC máxima, tu FTP o tu ritmo umbral.
+      {{ rpeOnlySportsLabel }} usan RPE (1-10) y no necesitan zonas.
+    </p>
+  </div>
+
+  @if (loading()) {
+    <div class="rounded-2xl bg-white/10 p-6 text-center">Cargando zonas...</div>
+  } @else if (loadError()) {
+    <p class="rounded-2xl bg-red-950/40 p-4 text-red-200" role="alert">{{ loadError() }}</p>
+  } @else {
+    <div class="grid gap-4 xl:grid-cols-2">
+      @for (slot of slots; track slot.sport + slot.metric) {
+        <app-zone-set-editor
+          [sport]="slot.sport"
+          [metric]="slot.metric"
+          [zoneSet]="zoneSetFor(slot)"
+          [suggestedReference]="suggestedReference(slot)"
+          (saved)="replace($event)"
+          (deleted)="remove($event)"
+        />
+      }
+    </div>
+  }
+</section>

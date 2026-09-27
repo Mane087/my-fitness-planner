@@ -1,10 +1,8 @@
 import { CommonModule, Location } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
-  FormControl,
-  FormGroup,
   ReactiveFormsModule,
   ValidationErrors,
   ValidatorFn,
@@ -14,46 +12,22 @@ import { InputFormComponent } from '../../components/input-form/input-form.compo
 import { WeekStartsOn } from '../../core/domain/calendar.enums';
 import { DomainValidationError } from '../../core/domain/domain-validation.error';
 import type { AthleteProfileEntity } from '../../core/domain/schemas/athlete-profile.schema';
-import type {
-  TrainingZone,
-  TrainingZoneSetEntity,
-} from '../../core/domain/schemas/training-zone-set.schema';
-import { createDefaultZones } from '../../core/domain/training-zone-set.defaults';
 import {
   INTENSITY_METRICS,
-  IntensityMetric,
-  resolveHeartRateZoneSport,
+  type IntensityMetric,
   SPORTS,
   type Sport,
 } from '../../core/domain/workout.enums';
 import { INTENSITY_METRIC_LABELS, SPORT_LABELS } from '../../core/models/workout-labels';
 import { AthleteProfileRepository } from '../../core/repositories/athlete-profile.repository';
-import { createId } from '../../core/repositories/repository-utils';
-import { TrainingZoneSetRepository } from '../../core/repositories/training-zone-set.repository';
 import { SelectComponent } from '../../components/select/select.component';
 import { Options } from '../../core/models/option';
-import { ActionButtonComponent } from '../../components/action-button/action-button.component';
 import { ButtonComponent } from '../../components/button/button.component';
 import { AlertComponent } from '../../components/alert/alert.component';
 import { BackupSectionComponent } from './backup-section.component';
+import { ZoneSetsSectionComponent } from './zone-sets-section.component';
 import { AlertType } from '../../core/models/alert';
 import { RouterLink } from '@angular/router';
-
-interface ZoneFormValue {
-  id: string;
-  name: string;
-  minHeartRate: string;
-  maxHeartRate: string;
-  description: string;
-}
-
-interface ZoneFormControls {
-  id: FormControl<string>;
-  name: FormControl<string>;
-  minHeartRate: FormControl<string>;
-  maxHeartRate: FormControl<string>;
-  description: FormControl<string>;
-}
 
 const MIN_HEART_RATE = 100;
 const MAX_HEART_RATE = 250;
@@ -67,10 +41,10 @@ const MAX_HEART_RATE = 250;
     ReactiveFormsModule,
     RouterLink,
     SelectComponent,
-    ActionButtonComponent,
     ButtonComponent,
     AlertComponent,
     BackupSectionComponent,
+    ZoneSetsSectionComponent,
   ],
   templateUrl: './profile-settings-page.component.html',
   styleUrl: './profile-settings-page.component.css',
@@ -80,13 +54,13 @@ export class ProfileSettingsPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly location = inject(Location);
   private readonly athleteProfileRepository = inject(AthleteProfileRepository);
-  private readonly trainingZoneSetRepository = inject(TrainingZoneSetRepository);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly alertMessage = signal('');
-  readonly heartRateZoneSet = signal<TrainingZoneSetEntity | null>(null);
-  readonly isDirty = signal(false);
+  /** Last saved max HR, suggested as reference for new heart rate zone sets. */
+  readonly savedMaxHeartRate = signal<number | null>(null);
+  private readonly zoneSetsSection = viewChild(ZoneSetsSectionComponent);
   showSuccessAlert = signal(false);
   typeAlert = signal<AlertType>('toast-success');
   readonly weekStartOptions: Options[] = [
@@ -123,16 +97,6 @@ export class ProfileSettingsPageComponent {
     updatedAt: [''],
   });
 
-  readonly zonesForm = this.fb.nonNullable.group({
-    zones: this.fb.array<FormGroup<ZoneFormControls>>([]),
-  });
-
-  readonly zones = this.zonesForm.controls.zones;
-
-  readonly hasChanges = computed(
-    () => this.isDirty() || this.profileForm.dirty || this.zonesForm.dirty,
-  );
-
   constructor() {
     void this.loadProfileSettings();
   }
@@ -143,13 +107,8 @@ export class ProfileSettingsPageComponent {
 
     try {
       const profile = await this.athleteProfileRepository.createDefaultProfile();
-      const zoneSet = await this.trainingZoneSetRepository.getOrSeed(
-        resolveHeartRateZoneSport(profile.preferredSport),
-        IntensityMetric.HeartRate,
-        profile.maxHeartRate,
-      );
 
-      this.heartRateZoneSet.set(zoneSet);
+      this.savedMaxHeartRate.set(profile.maxHeartRate);
       this.profileForm.reset({
         id: profile.id,
         name: profile.name,
@@ -161,8 +120,6 @@ export class ProfileSettingsPageComponent {
         createdAt: profile.createdAt,
         updatedAt: profile.updatedAt,
       });
-      this.replaceZones(zoneSet.zones);
-      this.isDirty.set(false);
     } catch (error) {
       this.alertMessage.set(
         this.toErrorMessage(error, 'No se pudo cargar la configuración del perfil.'),
@@ -172,28 +129,21 @@ export class ProfileSettingsPageComponent {
     }
   }
 
-  addZone(): void {
-    this.zones.push(this.createZoneGroup());
-    this.zones.markAsDirty();
-    this.isDirty.set(true);
-  }
-
-  deleteZone(index: number): void {
-    this.zones.removeAt(index);
-    this.zones.markAsDirty();
-    this.isDirty.set(true);
-  }
-
   cancel(): void {
     this.location.back();
   }
 
-  async saveProfileAndZones(): Promise<void> {
+  /** Reloads the profile and the zone sets after a backup replaced the data. */
+  onBackupImported(): void {
+    void this.loadProfileSettings();
+    void this.zoneSetsSection()?.load();
+  }
+
+  async saveProfile(): Promise<void> {
     this.alertMessage.set('');
     this.profileForm.markAllAsTouched();
-    this.zonesForm.markAllAsTouched();
 
-    const validationMessage = this.validateProfile() || this.validateZones();
+    const validationMessage = this.validateProfile();
 
     if (validationMessage) {
       this.showSuccessAlert.set(true);
@@ -206,13 +156,10 @@ export class ProfileSettingsPageComponent {
 
     try {
       const profile = await this.athleteProfileRepository.save(this.buildProfileEntity());
-      const zoneSet = await this.trainingZoneSetRepository.save(this.buildZoneSet(profile));
 
-      this.heartRateZoneSet.set(zoneSet);
+      this.savedMaxHeartRate.set(profile.maxHeartRate);
       this.profileForm.patchValue({ updatedAt: profile.updatedAt });
       this.profileForm.markAsPristine();
-      this.zonesForm.markAsPristine();
-      this.isDirty.set(false);
       this.showSuccessAlert.set(true);
       this.typeAlert.set('toast-success');
       this.alertMessage.set('Perfil guardado correctamente.');
@@ -227,23 +174,6 @@ export class ProfileSettingsPageComponent {
         this.showSuccessAlert.set(false);
       }, 3000);
     }
-  }
-
-  resetZonesToDefault(): void {
-    const maxHeartRate = this.toNumber(this.profileForm.controls.maxHeartRate.value);
-
-    if (maxHeartRate === null || maxHeartRate < MIN_HEART_RATE || maxHeartRate > MAX_HEART_RATE) {
-      this.showSuccessAlert.set(true);
-      this.typeAlert.set('toast-warning');
-      this.alertMessage.set(
-        `La FC máxima debe estar entre ${MIN_HEART_RATE} y ${MAX_HEART_RATE} ppm.`,
-      );
-      return;
-    }
-
-    this.replaceZones(createDefaultZones(IntensityMetric.HeartRate, maxHeartRate));
-    this.zones.markAsDirty();
-    this.isDirty.set(true);
   }
 
   validateProfile(): string {
@@ -284,84 +214,8 @@ export class ProfileSettingsPageComponent {
     return '';
   }
 
-  validateZones(): string {
-    const maxProfileHeartRate = this.toNumber(this.profileForm.controls.maxHeartRate.value) ?? 0;
-    const zones = this.zones.getRawValue();
-
-    if (zones.length === 0) {
-      return 'Debes configurar al menos una zona de entrenamiento.';
-    }
-
-    for (const zone of zones) {
-      const minHeartRate = this.toNumber(zone.minHeartRate);
-      const maxHeartRate = this.toNumber(zone.maxHeartRate);
-
-      if (!zone.name.trim()) {
-        return 'El nombre de la zona es requerido.';
-      }
-
-      if (zone.minHeartRate.trim() === '' || minHeartRate === null) {
-        return 'El mínimo/máximo de la zona es requerido.';
-      }
-
-      if (zone.maxHeartRate.trim() === '' || maxHeartRate === null) {
-        return 'El mínimo/máximo de la zona es requerido.';
-      }
-
-      if (minHeartRate >= maxHeartRate) {
-        return 'El mínimo de la zona debe ser menor que el máximo.';
-      }
-
-      if (maxHeartRate > maxProfileHeartRate) {
-        return 'El máximo de la zona no puede superar la FC máxima del perfil.';
-      }
-    }
-
-    const sortedZones = zones
-      .map((zone) => ({
-        minHeartRate: this.toNumber(zone.minHeartRate) ?? 0,
-        maxHeartRate: this.toNumber(zone.maxHeartRate) ?? 0,
-      }))
-      .sort((left, right) => left.minHeartRate - right.minHeartRate);
-
-    for (let index = 1; index < sortedZones.length; index += 1) {
-      const previousZone = sortedZones[index - 1];
-      const currentZone = sortedZones[index];
-
-      if (currentZone.minHeartRate < previousZone.maxHeartRate) {
-        return 'Las zonas de entrenamiento no deben traslaparse.';
-      }
-    }
-
-    return '';
-  }
-
-  trackZone(index: number): string {
-    return this.zones.at(index).controls.id.value;
-  }
-
   closeSuccessAlert(value: boolean): void {
     this.showSuccessAlert.set(value);
-  }
-
-  private replaceZones(zones: readonly TrainingZone[]): void {
-    this.zones.clear();
-
-    for (const zone of zones) {
-      this.zones.push(this.createZoneGroup(zone));
-    }
-
-    this.zonesForm.markAsPristine();
-  }
-
-  private createZoneGroup(zone?: TrainingZone): FormGroup<ZoneFormControls> {
-    return this.fb.nonNullable.group({
-      id: [zone?.id ?? createId()],
-      name: [zone?.name ?? '', [Validators.required]],
-      minHeartRate: [zone ? String(zone.minValue) : '', [Validators.required]],
-      maxHeartRate: [zone ? String(zone.maxValue) : '', [Validators.required]],
-      description: [zone?.description ?? ''],
-    });
   }
 
   private buildProfileEntity(): AthleteProfileEntity {
@@ -378,32 +232,6 @@ export class ProfileSettingsPageComponent {
       weekStartsOn: value.weekStartsOn as WeekStartsOn,
       createdAt: value.createdAt,
       updatedAt: value.updatedAt,
-    };
-  }
-
-  /** Zones are stored ordered by intensity (ascending heart rate) with consecutive sort order. */
-  private buildZoneSet(profile: AthleteProfileEntity): TrainingZoneSetEntity {
-    const zones = this.zones
-      .getRawValue()
-      .map((zone: ZoneFormValue) => ({
-        id: zone.id,
-        name: zone.name.trim(),
-        ...(zone.description.trim() ? { description: zone.description.trim() } : {}),
-        minValue: this.toNumber(zone.minHeartRate) ?? 0,
-        maxValue: this.toNumber(zone.maxHeartRate) ?? 0,
-      }))
-      .sort((left, right) => left.minValue - right.minValue)
-      .map((zone, index) => ({ ...zone, sortOrder: index + 1 }));
-    const current = this.heartRateZoneSet();
-
-    return {
-      id: current?.id ?? createId(),
-      sport: current?.sport ?? resolveHeartRateZoneSport(profile.preferredSport),
-      metric: IntensityMetric.HeartRate,
-      referenceValue: profile.maxHeartRate,
-      zones,
-      createdAt: current?.createdAt ?? '',
-      updatedAt: current?.updatedAt ?? '',
     };
   }
 

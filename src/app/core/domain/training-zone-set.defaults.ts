@@ -74,6 +74,13 @@ const PACE_ZONES: readonly ZonePercentageDefinition[] = [
   },
 ];
 
+/** Reference used when a set is seeded without one: max HR (bpm), FTP (W), threshold pace (s/km). */
+export const DEFAULT_REFERENCE_VALUES: Record<ZoneMetric, number> = {
+  [IntensityMetric.HeartRate]: 190,
+  [IntensityMetric.Power]: 200,
+  [IntensityMetric.Pace]: 300,
+};
+
 const DEFAULT_ZONES_BY_METRIC: Record<ZoneMetric, readonly ZonePercentageDefinition[]> = {
   [IntensityMetric.HeartRate]: HEART_RATE_ZONES,
   [IntensityMetric.Power]: POWER_ZONES,

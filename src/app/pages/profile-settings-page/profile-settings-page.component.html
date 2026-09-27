@@ -21,11 +21,7 @@
     @if (loading()) {
       <div class="rounded-2xl bg-white/10 p-6 text-center">Cargando configuración...</div>
     } @else {
-      <form
-        class="flex flex-col gap-8"
-        [formGroup]="profileForm"
-        (ngSubmit)="saveProfileAndZones()"
-      >
+      <form class="flex flex-col gap-8" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
         <section class="rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20">
           <div class="grid gap-6 grid-cols-3">
             <app-input-form
@@ -72,86 +68,6 @@
             />
           </div>
         </section>
-        <h2 class="text-4xl font-bold">Zonas de entrenamiento</h2>
-        <section
-          class="max-h-112.5 rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20 overflow-y-auto no-scrollbar"
-        >
-          <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <app-action-button
-              label="Agregar zona"
-              icon="/icons/plus.svg"
-              title="Agregar zona"
-              (pressed)="addZone()"
-            />
-            <app-action-button
-              label="Recalcular desde FC máxima"
-              title="Recalcular zonas desde la FC máxima"
-              (pressed)="resetZonesToDefault()"
-            />
-          </div>
-
-          <div class="overflow-x-auto" [formGroup]="zonesForm">
-            <table class="w-full min-w-215 border-collapse">
-              <thead>
-                <tr class="bg-[#606D80] text-left text-white">
-                  <th class="px-4 py-3">Zona</th>
-                  <th class="px-4 py-3">Mínimo (ppm)</th>
-                  <th class="px-4 py-3">Máximo (ppm)</th>
-                  <th class="px-4 py-3">Descripción</th>
-                  <th class="px-4 py-3">Acciones</th>
-                </tr>
-              </thead>
-              <tbody formArrayName="zones">
-                @for (zone of zones.controls; track trackZone($index); let index = $index) {
-                  <tr class="border-b border-slate-200" [formGroupName]="index">
-                    <td class="px-4 py-3">
-                      <input formControlName="name" class="input" aria-label="Nombre de zona" />
-                    </td>
-                    <td class="px-4 py-3">
-                      <input
-                        formControlName="minHeartRate"
-                        type="number"
-                        class="input"
-                        aria-label="Mínimo de zona"
-                      />
-                    </td>
-                    <td class="px-4 py-3">
-                      <input
-                        formControlName="maxHeartRate"
-                        type="number"
-                        class="input"
-                        aria-label="Máximo de zona"
-                      />
-                    </td>
-                    <td class="px-4 py-3">
-                      <input
-                        formControlName="description"
-                        class="input min-w-65"
-                        aria-label="Descripción de zona"
-                      />
-                    </td>
-                    <td class="px-4 py-3">
-                      <button
-                        type="button"
-                        class="rounded-full bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
-                        (click)="deleteZone(index)"
-                      >
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                } @empty {
-                  <tr>
-                    <td colspan="5" class="px-4 py-6 text-center text-slate-500">
-                      No hay zonas configuradas.
-                    </td>
-                  </tr>
-                }
-              </tbody>
-            </table>
-          </div>
-        </section>
-
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <app-button
             label="Cancelar"
@@ -172,7 +88,8 @@
       </form>
     }
 
-    <!-- Outside the loading block: reloading the profile after an import must keep its status message. -->
-    <app-backup-section (imported)="loadProfileSettings()" />
+    <!-- Outside the loading block: reloading the profile after an import must keep these components. -->
+    <app-zone-sets-section [profileMaxHeartRate]="savedMaxHeartRate()" />
+    <app-backup-section (imported)="onBackupImported()" />
   </section>
 </main>

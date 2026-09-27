@@ -1,0 +1,190 @@
+<section
+  class="flex flex-col gap-4 rounded-3xl bg-white p-5 text-slate-950 shadow-xl shadow-black/20"
+  [attr.aria-labelledby]="idPrefix() + '-title'"
+>
+  <h3 [id]="idPrefix() + '-title'" class="text-xl font-bold">{{ title() }}</h3>
+
+  <div class="flex flex-col gap-3 sm:flex-row sm:items-end">
+    <label class="flex flex-col gap-1" [for]="idPrefix() + '-reference'">
+      <span class="font-semibold">{{ referenceLabel() }}</span>
+      <input
+        [id]="idPrefix() + '-reference'"
+        class="w-full rounded-lg border border-slate-300 px-3 py-2 sm:w-40"
+        [attr.inputmode]="isPace() ? 'text' : 'numeric'"
+        [placeholder]="isPace() ? 'm:ss' : ''"
+        [value]="referenceText()"
+        (input)="setReference($event)"
+      />
+    </label>
+
+    @if (zoneSet()) {
+      <button
+        type="button"
+        class="rounded-lg border border-blue-600 px-4 py-2 font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+        [disabled]="isBusy()"
+        (click)="requestRegenerate()"
+      >
+        Recalcular desde la referencia
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+        [disabled]="isBusy()"
+        (click)="create()"
+      >
+        Crear zonas
+      </button>
+    }
+  </div>
+
+  @if (zoneSet()) {
+    <div class="flex flex-col gap-3">
+      <div
+        class="hidden gap-2 text-sm font-semibold text-slate-600 sm:grid sm:grid-cols-[minmax(8rem,1fr)_6rem_6rem_minmax(8rem,2fr)_auto]"
+        aria-hidden="true"
+      >
+        <span>Zona</span>
+        <span>Desde ({{ unit() }})</span>
+        <span>Hasta ({{ unit() }})</span>
+        <span>Descripción</span>
+        <span class="w-20"></span>
+      </div>
+
+      <ol class="flex flex-col gap-3">
+        @for (zone of zones(); track zone.id; let index = $index) {
+          <li
+            class="grid grid-cols-2 gap-2 border-b border-slate-200 pb-3 sm:grid-cols-[minmax(8rem,1fr)_6rem_6rem_minmax(8rem,2fr)_auto] sm:items-center sm:border-0 sm:pb-0"
+          >
+            <input
+              class="col-span-2 rounded-lg border border-slate-300 px-3 py-2 sm:col-span-1"
+              [attr.aria-label]="'Nombre de zona ' + (index + 1)"
+              [value]="zone.name"
+              (input)="setName(index, $event)"
+            />
+            <input
+              class="rounded-lg border border-slate-300 px-3 py-2"
+              [attr.aria-label]="'Desde zona ' + (index + 1) + ' (' + unit() + ')'"
+              [attr.inputmode]="isPace() ? 'text' : 'numeric'"
+              [value]="startOf(zone)"
+              (change)="setStart(index, $event)"
+            />
+            <input
+              class="rounded-lg border border-slate-300 px-3 py-2"
+              [attr.aria-label]="'Hasta zona ' + (index + 1) + ' (' + unit() + ')'"
+              [attr.inputmode]="isPace() ? 'text' : 'numeric'"
+              [value]="endOf(zone)"
+              (change)="setEnd(index, $event)"
+            />
+            <input
+              class="col-span-2 rounded-lg border border-slate-300 px-3 py-2 sm:col-span-1"
+              [attr.aria-label]="'Descripción de zona ' + (index + 1)"
+              [value]="zone.description ?? ''"
+              (input)="setDescription(index, $event)"
+            />
+            <button
+              type="button"
+              class="col-span-2 w-full rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700 disabled:opacity-40 sm:col-span-1 sm:w-20"
+              [disabled]="zones().length === 1"
+              [attr.aria-label]="'Eliminar zona ' + (index + 1)"
+              (click)="removeZone(index)"
+            >
+              Eliminar
+            </button>
+          </li>
+        }
+      </ol>
+    </div>
+  } @else {
+    <p class="text-sm text-slate-600">
+      Sin zonas configuradas. Captura la referencia para crearlas con los porcentajes recomendados.
+    </p>
+  }
+
+  @if (errors().length > 0) {
+    <ul class="list-disc rounded-lg bg-red-50 py-3 pl-8 pr-4 text-sm text-red-800" role="alert">
+      @for (error of errors(); track error) {
+        <li>{{ error }}</li>
+      }
+    </ul>
+  }
+  @if (statusMessage()) {
+    <p class="text-sm font-semibold text-emerald-700" role="status">{{ statusMessage() }}</p>
+  }
+
+  @if (zoneSet()) {
+    <div class="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-between">
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-4 py-2 font-semibold hover:bg-slate-50"
+          (click)="addZone()"
+        >
+          Agregar zona
+        </button>
+        <button
+          type="button"
+          class="rounded-lg border border-red-300 px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+          [disabled]="isBusy()"
+          (click)="requestDelete()"
+        >
+          Eliminar zonas
+        </button>
+      </div>
+      <div class="flex flex-col gap-2 sm:flex-row">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-4 py-2 font-semibold hover:bg-slate-50 disabled:opacity-50"
+          [disabled]="!hasChanges() || isBusy()"
+          (click)="discardChanges()"
+        >
+          Descartar cambios
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          [disabled]="!hasChanges() || isBusy()"
+          (click)="save()"
+        >
+          Guardar zonas
+        </button>
+      </div>
+    </div>
+  }
+</section>
+
+<app-modal [showModal]="pendingAction() !== null" [labelledBy]="idPrefix() + '-confirm-title'">
+  @if (pendingAction() === 'regenerate') {
+    <h3 [id]="idPrefix() + '-confirm-title'" class="text-xl font-bold">
+      ¿Recalcular las zonas de {{ title() }}?
+    </h3>
+    <p class="mt-3 text-slate-700">
+      Las zonas actuales y los cambios sin guardar se reemplazarán con los porcentajes recomendados
+      para {{ referenceLabel() }} {{ referenceText() }}. Los entrenamientos ya creados conservan la
+      zona con la que se planearon.
+    </p>
+  } @else {
+    <h3 [id]="idPrefix() + '-confirm-title'" class="text-xl font-bold">
+      ¿Eliminar las zonas de {{ title() }}?
+    </h3>
+    <p class="mt-3 text-slate-700">
+      Los entrenamientos nuevos con esta métrica no podrán usar zonas hasta que las vuelvas a crear.
+    </p>
+  }
+  <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+    <button
+      type="button"
+      class="rounded-lg border border-slate-300 px-4 py-2 font-semibold"
+      (click)="cancelPendingAction()"
+    >
+      Cancelar
+    </button>
+    <button
+      type="button"
+      class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white"
+      (click)="confirmPendingAction()"
+    >
+      {{ pendingAction() === 'regenerate' ? 'Recalcular zonas' : 'Eliminar zonas' }}
+    </button>
+  </div>
+</app-modal>
