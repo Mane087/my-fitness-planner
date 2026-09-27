@@ -3,22 +3,27 @@ import { Router } from '@angular/router';
 
 import { WeekStartsOn } from '../domain/calendar.enums';
 import type { ScheduledWorkoutEntity } from '../domain/schemas/scheduled-workout.schema';
+import { WorkoutStatus } from '../domain/workout.enums';
 import type {
   CalendarDayViewModel,
   CalendarMonthSummaryViewModel,
   CalendarMonthViewModel,
   CalendarWorkoutCardViewModel,
+  WeeklySummaryRowViewModel,
+  WeeklySummaryViewModel,
 } from '../models/calendar-view-models';
 import {
   SPORT_LABELS,
   SPORT_MODALITY_LABELS,
   WORKOUT_CATEGORY_COLOR_CLASSES,
   WORKOUT_CATEGORY_LABELS,
+  WORKOUT_STATUS_LABELS,
 } from '../models/workout-labels';
 import { AppSettingsRepository } from '../repositories/app-settings.repository';
 import { AthleteProfileRepository } from '../repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 import { CalendarDateService } from './calendar-date.service';
+import { WeeklySummaryService, type SummaryTotals } from './weekly-summary.service';
 
 const MAX_VISIBLE_WORKOUTS_PER_DAY = 3;
 
@@ -28,6 +33,7 @@ export class CalendarFacade {
   private readonly athleteProfileRepository = inject(AthleteProfileRepository);
   private readonly appSettingsRepository = inject(AppSettingsRepository);
   private readonly calendarDate = inject(CalendarDateService);
+  private readonly weeklySummary = inject(WeeklySummaryService);
   private readonly router = inject(Router);
 
   async loadMonth(referenceDate: string): Promise<CalendarMonthViewModel> {
@@ -35,11 +41,10 @@ export class CalendarFacade {
     const year = reference.getUTCFullYear();
     const month = reference.getUTCMonth() + 1;
 
-    const [profile, settings] = await Promise.all([
+    const [profile, weekStartsOn] = await Promise.all([
       this.athleteProfileRepository.getActiveProfile(),
-      this.appSettingsRepository.getSettings(),
+      this.resolveWeekStartsOn(),
     ]);
-    const weekStartsOn = profile?.weekStartsOn ?? settings?.weekStartsOn ?? WeekStartsOn.Monday;
     const userName = profile?.name?.trim() || 'Usuario';
     const { startDate, endDate } = this.calendarDate.getVisibleRange(year, month, weekStartsOn);
     const workouts = await this.scheduledWorkoutRepository.findByDateRange(startDate, endDate);
@@ -74,7 +79,39 @@ export class CalendarFacade {
   }
 
   goToCurrentMonth(): Promise<CalendarMonthViewModel> {
-    return this.loadMonth(this.calendarDate.formatDateOnly(new Date()));
+    return this.loadMonth(this.calendarDate.today());
+  }
+
+  async loadWeeklySummary(referenceDate: string): Promise<WeeklySummaryViewModel> {
+    const summary = await this.weeklySummary.getWeeklySummary(
+      referenceDate,
+      await this.resolveWeekStartsOn(),
+    );
+
+    return {
+      referenceDate,
+      rangeLabel: `${this.calendarDate.formatShortDate(summary.startDate)} al ${this.calendarDate.formatShortDate(summary.endDate)}`,
+      totals: this.toSummaryRow('total', 'Total', summary.totals),
+      bySport: summary.bySport.map((row) =>
+        this.toSummaryRow(row.sport, SPORT_LABELS[row.sport], row),
+      ),
+      byCategory: summary.byCategory.map((row) =>
+        this.toSummaryRow(row.category, WORKOUT_CATEGORY_LABELS[row.category], row),
+      ),
+    };
+  }
+
+  /** Reference date moved by whole weeks, used by the weekly summary navigation. */
+  shiftWeek(referenceDate: string, weeks: number): string {
+    return this.calendarDate.shiftDate(referenceDate, weeks * 7);
+  }
+
+  today(): string {
+    return this.calendarDate.today();
+  }
+
+  findWorkout(workoutId: string): Promise<ScheduledWorkoutEntity | null> {
+    return this.scheduledWorkoutRepository.findById(workoutId);
   }
 
   createWorkoutForDate(date: string): void {
@@ -128,7 +165,49 @@ export class CalendarFacade {
       distanceLabel: this.calendarDate.formatDistance(metersToKm(workout.plannedDistanceMeters)),
       colorClass: WORKOUT_CATEGORY_COLOR_CLASSES[workout.category],
       status: workout.status,
+      statusLabel: WORKOUT_STATUS_LABELS[workout.status],
+      actualDurationLabel:
+        workout.status === WorkoutStatus.Completed
+          ? this.calendarDate.formatDuration(
+              secondsToMinutes(
+                workout.completion?.durationSeconds ?? workout.plannedDurationSeconds,
+              ),
+            )
+          : null,
     };
+  }
+
+  private toSummaryRow(
+    key: string,
+    label: string,
+    totals: SummaryTotals,
+  ): WeeklySummaryRowViewModel {
+    return {
+      key,
+      label,
+      sessionsLabel: `${totals.completedSessions} de ${totals.sessions}`,
+      plannedDurationLabel: this.calendarDate.formatDuration(
+        secondsToMinutes(totals.plannedSeconds),
+      ),
+      actualDurationLabel: this.calendarDate.formatDuration(secondsToMinutes(totals.actualSeconds)),
+      plannedDistanceLabel: this.calendarDate.formatDistance(
+        totals.plannedMeters > 0 ? totals.plannedMeters / 1000 : null,
+      ),
+      actualDistanceLabel: this.calendarDate.formatDistance(
+        totals.actualMeters > 0 ? totals.actualMeters / 1000 : null,
+      ),
+      complianceLabel:
+        totals.compliance === null ? '--' : `${Math.round(totals.compliance * 100)} %`,
+    };
+  }
+
+  private async resolveWeekStartsOn(): Promise<WeekStartsOn> {
+    const [profile, settings] = await Promise.all([
+      this.athleteProfileRepository.getActiveProfile(),
+      this.appSettingsRepository.getSettings(),
+    ]);
+
+    return profile?.weekStartsOn ?? settings?.weekStartsOn ?? WeekStartsOn.Monday;
   }
 
   private buildSummary(

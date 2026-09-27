@@ -12,6 +12,9 @@ export interface CalendarWorkoutCardViewModel {
   distanceLabel: string;
   colorClass: string;
   status: WorkoutStatus;
+  statusLabel: string;
+  /** Actual duration, only for completed workouts. */
+  actualDurationLabel: string | null;
 }
 
 export interface CalendarDayViewModel {
@@ -42,4 +45,24 @@ export interface CalendarMonthViewModel {
   weeks: CalendarDayViewModel[][];
   summary: CalendarMonthSummaryViewModel;
   userName: string;
+}
+
+export interface WeeklySummaryRowViewModel {
+  key: string;
+  label: string;
+  /** Completed sessions of the planned ones, e.g. `2 de 3`. */
+  sessionsLabel: string;
+  plannedDurationLabel: string;
+  actualDurationLabel: string;
+  plannedDistanceLabel: string;
+  actualDistanceLabel: string;
+  complianceLabel: string;
+}
+
+export interface WeeklySummaryViewModel {
+  referenceDate: string;
+  rangeLabel: string;
+  totals: WeeklySummaryRowViewModel;
+  bySport: WeeklySummaryRowViewModel[];
+  byCategory: WeeklySummaryRowViewModel[];
 }

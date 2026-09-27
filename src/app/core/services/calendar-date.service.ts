@@ -22,6 +22,7 @@ export class CalendarDateService {
   ): CalendarDayViewModel[][] {
     const { startDate } = this.getVisibleRange(year, month, weekStartsOn);
     const start = this.parseDateOnly(startDate);
+    const today = this.today();
     const weeks: CalendarDayViewModel[][] = [];
 
     for (let weekIndex = 0; weekIndex < 6; weekIndex += 1) {
@@ -34,9 +35,9 @@ export class CalendarDateService {
         week.push({
           date: dateOnly,
           dayOfMonth: date.getUTCDate(),
-          isToday: this.isToday(dateOnly),
+          isToday: dateOnly === today,
           isCurrentMonth: this.isSameMonth(dateOnly, year, month),
-          isPast: dateOnly < this.formatDateOnly(new Date()),
+          isPast: dateOnly < today,
           workouts: [],
           hiddenWorkoutCount: 0,
         });
@@ -82,8 +83,40 @@ export class CalendarDateService {
     return `${monthLabel} ${year}`;
   }
 
+  /** Today in the user's local time zone. Dates are stored without time zone, as the user sees them. */
+  today(now = new Date()): string {
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
+
+  /** Day and short month, e.g. `5 oct`. */
+  formatShortDate(date: string): string {
+    return new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+      .format(this.parseDateOnly(date))
+      .replace('.', '');
+  }
+
   isToday(date: string): boolean {
-    return date === this.formatDateOnly(new Date());
+    return date === this.today();
+  }
+
+  /** First and last day of the week that contains the date. */
+  getWeekRange(
+    referenceDate: string,
+    weekStartsOn: WeekStartsOnType,
+  ): { startDate: string; endDate: string } {
+    const reference = this.parseDateOnly(referenceDate);
+    const start = this.addDays(reference, -this.getWeekOffset(reference.getUTCDay(), weekStartsOn));
+
+    return {
+      startDate: this.formatDateOnly(start),
+      endDate: this.formatDateOnly(this.addDays(start, 6)),
+    };
+  }
+
+  shiftDate(date: string, days: number): string {
+    return this.formatDateOnly(this.addDays(this.parseDateOnly(date), days));
   }
 
   isSameMonth(date: string, year: number, month: number): boolean {

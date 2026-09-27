@@ -1,11 +1,8 @@
 import { Routes } from '@angular/router';
 
-import { CalendarPageComponent } from './pages/calendar/calendar-page.component';
-import { ComingSoonPageComponent } from './pages/coming-soon/coming-soon-page.component';
 import { HomePageComponent } from './pages/home/home.component';
-import { ProfileSettingsPageComponent } from './pages/profile-settings-page/profile-settings-page.component';
-import { TrainingSessionFormPageComponent } from './pages/training-session-form-page/training-session-form-page.component';
 
+// The home page is the entry point; the other pages load on demand to keep the initial bundle small.
 export const routes: Routes = [
   {
     path: '',
@@ -14,28 +11,43 @@ export const routes: Routes = [
   },
   {
     path: 'calendar',
-    component: CalendarPageComponent,
+    loadComponent: () =>
+      import('./pages/calendar/calendar-page.component').then(
+        (module) => module.CalendarPageComponent,
+      ),
     title: 'Calendario · MyFitnessPlanner',
   },
   {
     path: 'calendar/new',
-    component: TrainingSessionFormPageComponent,
+    loadComponent: () =>
+      import('./pages/training-session-form-page/training-session-form-page.component').then(
+        (module) => module.TrainingSessionFormPageComponent,
+      ),
     title: 'Nuevo entrenamiento · MyFitnessPlanner',
   },
   {
     path: 'calendar/edit/:id',
-    component: TrainingSessionFormPageComponent,
+    loadComponent: () =>
+      import('./pages/training-session-form-page/training-session-form-page.component').then(
+        (module) => module.TrainingSessionFormPageComponent,
+      ),
     title: 'Editar entrenamiento · MyFitnessPlanner',
   },
   {
     path: 'library',
-    component: ComingSoonPageComponent,
+    loadComponent: () =>
+      import('./pages/coming-soon/coming-soon-page.component').then(
+        (module) => module.ComingSoonPageComponent,
+      ),
     data: { title: 'Biblioteca de entrenamientos' },
     title: 'Biblioteca · MyFitnessPlanner',
   },
   {
     path: 'profile',
-    component: ProfileSettingsPageComponent,
+    loadComponent: () =>
+      import('./pages/profile-settings-page/profile-settings-page.component').then(
+        (module) => module.ProfileSettingsPageComponent,
+      ),
     title: 'Perfil · MyFitnessPlanner',
   },
   {

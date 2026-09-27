@@ -164,6 +164,10 @@ ScheduledWorkoutEntity = WorkoutDefinition & {
 
 Regla: `status === 'completed'` si y solo si `completion` está presente.
 
+Las transiciones de estado las hace `WorkoutCompletionService`: `complete` guarda `status` y `completion` juntos (con `completedAt` asignado por el servicio), y `skip` y `reopen` eliminan `completion`.
+
+Resumen semanal (`WeeklySummaryService`): la semana empieza según `weekStartsOn`. El tiempo y la distancia planeados incluyen todos los entrenamientos de la semana, también los omitidos. Los valores reales salen de los entrenamientos completados; si un registro no tiene duración o distancia, se cuenta el valor planeado. El cumplimiento es tiempo real entre tiempo planeado.
+
 Al programar una plantilla se copia su definición completa (`steps` incluidos) y se guarda `sourceTemplateId`. Editar la plantilla después no modifica los entrenamientos ya programados.
 
 Índices: `by_scheduled_date`, `by_status`, `by_sport`.
