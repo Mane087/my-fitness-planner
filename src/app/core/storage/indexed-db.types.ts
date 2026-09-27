@@ -28,8 +28,23 @@ export interface IndexedDbIndexDefinition {
   options?: IDBIndexParameters;
 }
 
+// Store names are plain strings: migrations describe historical schemas that may
+// reference stores no longer present in IndexedDbSchema.
 export interface IndexedDbStoreDefinition {
-  name: keyof IndexedDbSchema;
+  name: string;
   keyPath: string;
   indexes: IndexedDbIndexDefinition[];
+}
+
+export interface IndexedDbMigrationContext {
+  database: IDBDatabase;
+  transaction: IDBTransaction;
+  oldVersion: number;
+  newVersion: number;
+}
+
+export interface IndexedDbMigration {
+  version: number;
+  description: string;
+  upgrade(context: IndexedDbMigrationContext): void;
 }
