@@ -101,18 +101,6 @@ describe('repositories (fake-indexeddb)', () => {
   });
 
   describe('TrainingZoneSetRepository', () => {
-    it('getOrSeed creates the default set once and returns the stored one afterwards', async () => {
-      const repository = TestBed.inject(TrainingZoneSetRepository);
-
-      const seeded = await repository.getOrSeed('running', 'pace', 300);
-      const again = await repository.getOrSeed('running', 'pace', 280);
-
-      expect(again.id).toBe(seeded.id);
-      expect(again.referenceValue).toBe(300);
-      expect(seeded.zones).toHaveLength(5);
-      await expect(repository.findAll()).resolves.toHaveLength(1);
-    });
-
     it('rejects overlapping zones on save', async () => {
       const repository = TestBed.inject(TrainingZoneSetRepository);
       const zoneSet = heartRateZoneSet();

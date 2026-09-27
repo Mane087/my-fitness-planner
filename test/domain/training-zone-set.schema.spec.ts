@@ -1,4 +1,7 @@
-import { trainingZoneSetSchema } from '../../src/app/core/domain/schemas/training-zone-set.schema';
+import {
+  editableTrainingZoneSetSchema,
+  trainingZoneSetSchema,
+} from '../../src/app/core/domain/schemas/training-zone-set.schema';
 import {
   createDefaultZoneSet,
   createDefaultZones,
@@ -83,6 +86,60 @@ describe('trainingZoneSetSchema', () => {
     });
 
     expect(trainingZoneSetSchema.safeParse(paceSet).success).toBe(false);
+  });
+});
+
+describe('editableTrainingZoneSetSchema', () => {
+  it('accepts the default tables for every zone metric', () => {
+    expect(
+      editableTrainingZoneSetSchema.safeParse(createDefaultZoneSet('cycling', 'heart_rate', 193))
+        .success,
+    ).toBe(true);
+    expect(
+      editableTrainingZoneSetSchema.safeParse(createDefaultZoneSet('cycling', 'power', 250))
+        .success,
+    ).toBe(true);
+    expect(
+      editableTrainingZoneSetSchema.safeParse(createDefaultZoneSet('running', 'pace', 270)).success,
+    ).toBe(true);
+  });
+
+  it('keeps accepting stored sets with gaps in the base schema', () => {
+    const zoneSet = heartRateZoneSet();
+    zoneSet.zones[1] = { ...zoneSet.zones[1]!, minValue: 117 };
+
+    expect(trainingZoneSetSchema.safeParse(zoneSet).success).toBe(true);
+    expect(messages(editableTrainingZoneSetSchema.safeParse(zoneSet))).toEqual([
+      'zones.1.minValue: Cada zona debe empezar donde termina la anterior.',
+    ]);
+  });
+
+  it('requires pace zones to start at the fast bound of the previous zone', () => {
+    const paceSet = heartRateZoneSet({
+      sport: 'running',
+      metric: 'pace',
+      referenceValue: 300,
+      zones: [
+        { id: 'p1', name: 'Z1', minValue: 387, maxValue: 480, sortOrder: 1 },
+        { id: 'p2', name: 'Z2', minValue: 342, maxValue: 380, sortOrder: 2 },
+      ],
+    });
+
+    expect(messages(editableTrainingZoneSetSchema.safeParse(paceSet))).toEqual([
+      'zones.1.minValue: Cada zona debe empezar donde termina la anterior.',
+    ]);
+  });
+
+  it.each([
+    ['heart_rate', 'cycling', 99, 'La FC máxima debe estar entre 100 y 250 ppm.'],
+    ['power', 'cycling', 601, 'El FTP debe estar entre 50 y 600 W.'],
+    ['pace', 'running', 119, 'El ritmo umbral debe estar entre 2:00 y 15:00 min/km.'],
+  ] as const)('rejects an unrealistic %s reference', (metric, sport, referenceValue, message) => {
+    const zoneSet = { ...createDefaultZoneSet(sport, metric, 200), referenceValue };
+
+    expect(messages(editableTrainingZoneSetSchema.safeParse(zoneSet))).toEqual([
+      `referenceValue: ${message}`,
+    ]);
   });
 });
 

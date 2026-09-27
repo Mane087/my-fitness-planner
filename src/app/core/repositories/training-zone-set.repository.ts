@@ -4,7 +4,6 @@ import {
   trainingZoneSetSchema,
   type TrainingZoneSetEntity,
 } from '../domain/schemas/training-zone-set.schema';
-import { createDefaultZoneSet } from '../domain/training-zone-set.defaults';
 import type { Sport, ZoneMetric } from '../domain/workout.enums';
 import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
@@ -54,26 +53,5 @@ export class TrainingZoneSetRepository {
 
   delete(id: string): Promise<void> {
     return this.indexedDb.delete(IndexedDbStore.TrainingZoneSets, id);
-  }
-
-  /** Returns the existing set for the sport and metric, or creates it from the default table. */
-  async getOrSeed(
-    sport: Sport,
-    metric: ZoneMetric,
-    referenceValue: number,
-  ): Promise<TrainingZoneSetEntity> {
-    const existing = await this.findBySportAndMetric(sport, metric);
-
-    if (existing) {
-      return existing;
-    }
-
-    const zoneSet = parseEntity(
-      trainingZoneSetSchema,
-      'Training zone set',
-      createDefaultZoneSet(sport, metric, referenceValue),
-    );
-
-    return this.indexedDb.add(IndexedDbStore.TrainingZoneSets, zoneSet);
   }
 }

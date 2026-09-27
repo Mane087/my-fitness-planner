@@ -90,6 +90,50 @@ export const trainingZoneSetSchema = z
 
 export type TrainingZoneSetEntity = z.infer<typeof trainingZoneSetSchema>;
 
+/** Accepted reference values when the user configures a set. Pace goes from 2:00 to 15:00 per km. */
+export const REFERENCE_VALUE_LIMITS: Record<ZoneMetric, { min: number; max: number }> = {
+  [IntensityMetric.HeartRate]: { min: 100, max: 250 },
+  [IntensityMetric.Power]: { min: 50, max: 600 },
+  [IntensityMetric.Pace]: { min: 120, max: 900 },
+};
+
+const REFERENCE_VALUE_MESSAGES: Record<ZoneMetric, string> = {
+  [IntensityMetric.HeartRate]: 'La FC máxima debe estar entre 100 y 250 ppm.',
+  [IntensityMetric.Power]: 'El FTP debe estar entre 50 y 600 W.',
+  [IntensityMetric.Pace]: 'El ritmo umbral debe estar entre 2:00 y 15:00 min/km.',
+};
+
+/**
+ * Stricter rules for sets the user edits: the reference value must be realistic and every zone
+ * starts where the previous one ends. Stored sets keep the base schema, so migrated data and
+ * backups with gaps between zones still load.
+ */
+export const editableTrainingZoneSetSchema = trainingZoneSetSchema.superRefine(
+  (zoneSet, context) => {
+    const limits = REFERENCE_VALUE_LIMITS[zoneSet.metric];
+
+    if (zoneSet.referenceValue < limits.min || zoneSet.referenceValue > limits.max) {
+      context.addIssue({
+        code: 'custom',
+        message: REFERENCE_VALUE_MESSAGES[zoneSet.metric],
+        path: ['referenceValue'],
+      });
+    }
+
+    zoneSet.zones.forEach((zone, index) => {
+      const previousZone = zoneSet.zones[index - 1];
+
+      if (previousZone && !zonesAreContiguous(zoneSet.metric, previousZone, zone)) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Cada zona debe empezar donde termina la anterior.',
+          path: ['zones', index, 'minValue'],
+        });
+      }
+    });
+  },
+);
+
 /**
  * Zones are ordered by intensity. Heart rate and power grow with intensity;
  * pace (seconds per km) decreases with intensity, so its bounds go down.
@@ -100,4 +144,14 @@ function zonesOverlap(metric: ZoneMetric, previous: TrainingZone, current: Train
   }
 
   return current.minValue < previous.maxValue;
+}
+
+function zonesAreContiguous(
+  metric: ZoneMetric,
+  previous: TrainingZone,
+  current: TrainingZone,
+): boolean {
+  return metric === IntensityMetric.Pace
+    ? current.maxValue === previous.minValue
+    : current.minValue === previous.maxValue;
 }

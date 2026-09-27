@@ -208,6 +208,13 @@ El snapshot se copia dentro del `IntensityTarget` al guardar un paso, de forma q
 
 Índice único: `by_sport_and_metric` sobre `[sport, metric]`.
 
+Al guardar zonas desde la UI (`TrainingZoneSetService`) se aplica `editableTrainingZoneSetSchema`, que agrega dos reglas al esquema base:
+
+- Cada zona empieza donde termina la anterior (en `pace`, el `maxValue` de una zona es el `minValue` de la anterior).
+- El valor de referencia está en un rango realista: FC máxima de 100 a 250 ppm, FTP de 50 a 600 W y ritmo umbral de 2:00 a 15:00 min/km.
+
+El esquema base no exige zonas continuas, para que los datos migrados y los respaldos existentes sigan cargando. Un conjunto de zonas que usa algún entrenamiento o plantilla como objetivo no se puede eliminar.
+
 Tablas de semillas (`training-zone-set.defaults.ts`):
 
 | Métrica    | Zonas                                                            | Base                       |
