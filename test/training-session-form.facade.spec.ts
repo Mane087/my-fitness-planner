@@ -14,7 +14,7 @@ import {
   BlockTargetType,
   type TrainingSessionFormValue,
   type WorkoutBlockFormValue,
-} from '../src/app/core/interfaces/training-session-form.model';
+} from '../src/app/core/models/training-session-form.model';
 import { AthleteProfileRepository } from '../src/app/core/repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../src/app/core/repositories/scheduled-workout.repository';
 import { TrainingZoneSetRepository } from '../src/app/core/repositories/training-zone-set.repository';

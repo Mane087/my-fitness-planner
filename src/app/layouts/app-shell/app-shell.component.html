@@ -1,0 +1,33 @@
+<div class="flex min-h-svh flex-col bg-slate-950 text-slate-50">
+  <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+      <a
+        routerLink="/"
+        class="shrink-0 text-lg font-bold tracking-tight text-slate-50 hover:text-text-focused"
+      >
+        MyFitnessPlanner
+      </a>
+
+      <nav aria-label="Navegación principal" class="min-w-0 overflow-x-auto">
+        <ul class="flex items-center gap-1">
+          @for (item of navigationItems; track item.path) {
+            <li>
+              <a
+                [routerLink]="item.path"
+                routerLinkActive="bg-slate-800 text-text-focused"
+                ariaCurrentWhenActive="page"
+                class="block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-text-focused"
+              >
+                {{ item.label }}
+              </a>
+            </li>
+          }
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <div class="flex-1">
+    <router-outlet />
+  </div>
+</div>

@@ -21,6 +21,15 @@ export class AthleteProfileRepository {
     return profiles[0] ?? null;
   }
 
+  /**
+   * The default profile keeps `createdAt === updatedAt` until the user saves it for
+   * the first time, because `save` always writes a new `updatedAt`.
+   */
+  async hasConfiguredProfile(): Promise<boolean> {
+    const profile = await this.getActiveProfile();
+    return profile !== null && profile.createdAt !== profile.updatedAt;
+  }
+
   async createDefaultProfile(): Promise<AthleteProfileEntity> {
     const existing = await this.getActiveProfile();
 

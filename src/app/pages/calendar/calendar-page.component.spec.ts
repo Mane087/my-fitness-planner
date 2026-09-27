@@ -2,7 +2,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 
 import { CalendarPageComponent } from './calendar-page.component';
-import type { CalendarMonthViewModel } from '../../core/interfaces/calendar-view-models';
+import type { CalendarMonthViewModel } from '../../core/models/calendar-view-models';
 import { CalendarFacade } from '../../core/services/calendar-facade.service';
 
 describe('CalendarPageComponent', () => {

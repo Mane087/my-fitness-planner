@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import { WeekStartsOn, type WeekStartsOn as WeekStartsOnType } from '../domain/calendar.enums';
-import { CalendarDayViewModel } from '../interfaces/calendar-view-models';
+import { CalendarDayViewModel } from '../models/calendar-view-models';
 
 const WEEKDAYS_MONDAY_FIRST = [
   'Lunes',

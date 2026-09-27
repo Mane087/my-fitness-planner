@@ -12,6 +12,7 @@ import {
 } from '@angular/forms';
 import { InputFormComponent } from '../../components/input-form/input-form.component';
 import { WeekStartsOn } from '../../core/domain/calendar.enums';
+import { DomainValidationError } from '../../core/domain/domain-validation.error';
 import type { AthleteProfileEntity } from '../../core/domain/schemas/athlete-profile.schema';
 import type {
   TrainingZone,
@@ -30,11 +31,11 @@ import { AthleteProfileRepository } from '../../core/repositories/athlete-profil
 import { createId } from '../../core/repositories/repository-utils';
 import { TrainingZoneSetRepository } from '../../core/repositories/training-zone-set.repository';
 import { SelectComponent } from '../../components/select/select.component';
-import { Options } from '../../core/types/option';
-import { ActionButtonComponent } from '../../components/action_button/action_button.component';
+import { Options } from '../../core/models/option';
+import { ActionButtonComponent } from '../../components/action-button/action-button.component';
 import { ButtonComponent } from '../../components/button/button.component';
 import { AlertComponent } from '../../components/alert/alert.component';
-import { AlertType } from '../../core/types/alert';
+import { AlertType } from '../../core/models/alert';
 import { RouterLink } from '@angular/router';
 
 interface ZoneFormValue {
@@ -161,7 +162,9 @@ export class ProfileSettingsPageComponent {
       this.replaceZones(zoneSet.zones);
       this.isDirty.set(false);
     } catch (error) {
-      this.alertMessage.set(this.toErrorMessage(error));
+      this.alertMessage.set(
+        this.toErrorMessage(error, 'No se pudo cargar la configuración del perfil.'),
+      );
     } finally {
       this.loading.set(false);
     }
@@ -212,7 +215,9 @@ export class ProfileSettingsPageComponent {
       this.typeAlert.set('toast-success');
       this.alertMessage.set('Perfil guardado correctamente.');
     } catch (error) {
-      this.alertMessage.set(this.toErrorMessage(error));
+      this.alertMessage.set(
+        this.toErrorMessage(error, 'No se pudo guardar la configuración del perfil.'),
+      );
       this.typeAlert.set('toast-danger');
     } finally {
       this.saving.set(false);
@@ -423,9 +428,11 @@ export class ProfileSettingsPageComponent {
     return Number.isFinite(numberValue) ? numberValue : null;
   }
 
-  private toErrorMessage(error: unknown): string {
-    return error instanceof Error
-      ? error.message
-      : 'No se pudo guardar la configuración del perfil.';
+  private toErrorMessage(error: unknown, fallbackMessage: string): string {
+    if (error instanceof DomainValidationError && error.issues[0]) {
+      return error.issues[0].message;
+    }
+
+    return fallbackMessage;
   }
 }

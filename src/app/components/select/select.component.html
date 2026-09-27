@@ -14,7 +14,7 @@
       }
       <span>{{ currentSelection()?.label }}</span>
     </span>
-    <img src="/icons/down.svg" alt="down" class="w-5 h-5" />
+    <img src="/icons/down.svg" alt="" aria-hidden="true" class="w-5 h-5" />
   </button>
 
   @if (isOpen()) {
@@ -31,7 +31,9 @@
           (keydown.space)="selectOption(option)"
           tabindex="0"
         >
-          <img [src]="option.icon" alt="icon" class="w-5 h-5" />
+          @if (option.icon) {
+            <img [src]="option.icon" alt="" aria-hidden="true" class="w-5 h-5" />
+          }
           <span>{{ option.label }}</span>
         </li>
       }

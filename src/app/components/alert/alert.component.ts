@@ -1,7 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
-import { AlertType } from '../../core/types/alert';
-import { AlertConfig } from '../../core/interfaces/alert';
+import type { AlertConfig, AlertType } from '../../core/models/alert';
 
 @Component({
   selector: 'app-alert',

@@ -150,6 +150,21 @@ describe('repositories (fake-indexeddb)', () => {
     });
   });
 
+  describe('AthleteProfileRepository', () => {
+    it('reports the default profile as not configured until it is saved', async () => {
+      const profiles = TestBed.inject(AthleteProfileRepository);
+
+      await expect(profiles.hasConfiguredProfile()).resolves.toBe(false);
+      const profile = await profiles.createDefaultProfile();
+      await expect(profiles.hasConfiguredProfile()).resolves.toBe(false);
+
+      await new Promise((resolve) => setTimeout(resolve, 2));
+      await profiles.save({ ...profile, name: 'Ana' });
+
+      await expect(profiles.hasConfiguredProfile()).resolves.toBe(true);
+    });
+  });
+
   describe('LocalPersistenceService', () => {
     it('seeds settings, profile and the heart rate zone set once', async () => {
       const persistence = TestBed.inject(LocalPersistenceService);
