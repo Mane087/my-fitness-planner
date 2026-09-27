@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { IntensityMetric, STEP_PHASES } from '../workout.enums';
 import { idSchema, metersSchema, secondsSchema } from './common.schema';

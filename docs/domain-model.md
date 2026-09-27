@@ -137,7 +137,7 @@ WorkoutTemplateEntity = WorkoutDefinition & {
 }
 ```
 
-Índices: `by_sport`, `by_is_archived`, `by_title`.
+Índices: `by_sport`, `by_title`. `isArchived` no se indexa porque IndexedDB no acepta booleanos como clave; las plantillas archivadas se filtran en memoria.
 
 ### ScheduledWorkoutEntity (store `scheduled_workouts`)
 
@@ -187,7 +187,7 @@ TrainingZoneSetEntity = {
   sport: Sport
   metric: 'heart_rate' | 'power' | 'pace'
   referenceValue: number                     // FC máx (bpm) | FTP (W) | ritmo umbral (s/km)
-  zones: TrainingZone[]                      // ordenadas, contiguas, sin traslape
+  zones: TrainingZone[]                      // ordenadas por intensidad, sin traslape
   createdAt: string
   updatedAt: string
 }
@@ -335,4 +335,13 @@ La migración `v2-structured-workouts` transforma los datos existentes:
 | store `training_zones`              | un `TrainingZoneSetEntity` (`cycling`, `heart_rate`, `referenceValue` = FC máx del perfil)                                                                                                                                                                                                                              |
 | store `sport_profiles`              | store `athlete_profiles`; `preferredDiscipline` → `preferredSport: cycling`                                                                                                                                                                                                                                             |
 
-Los campos a nivel de entrenamiento `targetZoneId`, `targetRpe`, `cadenceMin/Max` de v1 se descartan: en v2 la intensidad se define por paso.
+Reglas adicionales de la migración:
+
+- `workoutType: base` y cualquier valor desconocido también pasan a `category: endurance`. En movilidad las categorías que no aplican pasan a `mobility`; en pliometría, a `power`.
+- `intensityMetric: rpe` se conserva como `primaryMetric: rpe`.
+- Un entrenamiento v1 sin bloques recibe un paso `interval` llamado "Sesión" con la duración estimada (o `open` si era 0), porque en v2 la lista de pasos no puede estar vacía.
+- Un bloque de distancia se convierte en un intervalo de distancia; su duración en minutos se pierde en el paso, pero sigue sumada en `plannedDurationSeconds`.
+- Si no había zonas en v1 no se crea ningún conjunto; `LocalPersistenceService` siembra el conjunto de FC al iniciar.
+- Los campos a nivel de entrenamiento `targetZoneId`, `targetRpe`, `cadenceMin/Max` de v1 se descartan: en v2 la intensidad se define por paso.
+
+El conjunto de zonas de FC que se siembra al iniciar y el que edita la página de perfil es el del deporte preferido. Si ese deporte no usa zonas (movilidad, pliometría), se usa el de ciclismo (`resolveHeartRateZoneSport`).

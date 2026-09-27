@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import {
   INTENSITY_METRICS,
@@ -82,3 +82,18 @@ export function refineWorkoutDefinition(
 
 export const workoutDefinitionSchema =
   workoutDefinitionBaseSchema.superRefine(refineWorkoutDefinition);
+
+const WORKOUT_DEFINITION_KEYS = Object.keys(workoutDefinitionShape) as (keyof WorkoutDefinition)[];
+
+/** Copies only the definition fields (no id, dates, status or completion) of a template or workout. */
+export function pickWorkoutDefinition(source: WorkoutDefinition): WorkoutDefinition {
+  const definition: Partial<Record<keyof WorkoutDefinition, unknown>> = {};
+
+  for (const key of WORKOUT_DEFINITION_KEYS) {
+    if (source[key] !== undefined) {
+      definition[key] = source[key];
+    }
+  }
+
+  return definition as WorkoutDefinition;
+}

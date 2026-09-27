@@ -1,58 +1,31 @@
 import { inject, Injectable } from '@angular/core';
 import { Router } from '@angular/router';
 
-import type { ScheduledWorkoutEntity } from '../domain/scheduled-workout.model';
-import { WeekStartsOn } from '../domain/sport-profile.model';
-import type { WorkoutDiscipline, WorkoutStatus, WorkoutType } from '../domain/workout.enums';
-import { AppSettingsRepository } from '../repositories/app-settings.repository';
-import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
-import { SportProfileRepository } from '../repositories/sport-profile.repository';
+import { WeekStartsOn } from '../domain/calendar.enums';
+import type { ScheduledWorkoutEntity } from '../domain/schemas/scheduled-workout.schema';
 import type {
   CalendarDayViewModel,
   CalendarMonthSummaryViewModel,
   CalendarMonthViewModel,
   CalendarWorkoutCardViewModel,
 } from '../interfaces/calendar-view-models';
+import {
+  SPORT_LABELS,
+  SPORT_MODALITY_LABELS,
+  WORKOUT_CATEGORY_COLOR_CLASSES,
+  WORKOUT_CATEGORY_LABELS,
+} from '../models/workout-labels';
+import { AppSettingsRepository } from '../repositories/app-settings.repository';
+import { AthleteProfileRepository } from '../repositories/athlete-profile.repository';
+import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 import { CalendarDateService } from './calendar-date.service';
 
 const MAX_VISIBLE_WORKOUTS_PER_DAY = 3;
 
-const WORKOUT_TYPE_COLORS: Record<WorkoutType, string> = {
-  recovery: 'border-l-green-500',
-  base: 'border-l-blue-500',
-  endurance: 'border-l-indigo-500',
-  climbing: 'border-l-orange-500',
-  tempo: 'border-l-yellow-500',
-  threshold: 'border-l-red-500',
-  vo2max: 'border-l-purple-500',
-  technique: 'border-l-cyan-500',
-  free: 'border-l-gray-400',
-};
-
-const WORKOUT_TYPE_LABELS: Record<WorkoutType, string> = {
-  recovery: 'Recuperación',
-  base: 'Base',
-  endurance: 'Resistencia',
-  climbing: 'Montaña',
-  tempo: 'Tempo',
-  threshold: 'Umbral',
-  vo2max: 'VO2 Máx',
-  technique: 'Técnica',
-  free: 'Libre',
-};
-
-const DISCIPLINE_LABELS: Record<WorkoutDiscipline, string> = {
-  road: 'Ruta',
-  mtb: 'MTB',
-  indoor: 'Indoor',
-  strength: 'Fuerza',
-  mobility: 'Movilidad',
-};
-
 @Injectable({ providedIn: 'root' })
 export class CalendarFacade {
   private readonly scheduledWorkoutRepository = inject(ScheduledWorkoutRepository);
-  private readonly sportProfileRepository = inject(SportProfileRepository);
+  private readonly athleteProfileRepository = inject(AthleteProfileRepository);
   private readonly appSettingsRepository = inject(AppSettingsRepository);
   private readonly calendarDate = inject(CalendarDateService);
   private readonly router = inject(Router);
@@ -63,7 +36,7 @@ export class CalendarFacade {
     const month = reference.getUTCMonth() + 1;
 
     const [profile, settings] = await Promise.all([
-      this.sportProfileRepository.getActiveProfile(),
+      this.athleteProfileRepository.getActiveProfile(),
       this.appSettingsRepository.getSettings(),
     ]);
     const weekStartsOn = profile?.weekStartsOn ?? settings?.weekStartsOn ?? WeekStartsOn.Monday;
@@ -137,17 +110,24 @@ export class CalendarFacade {
   }
 
   private toWorkoutCard(workout: ScheduledWorkoutEntity): CalendarWorkoutCardViewModel {
+    const sportLabel = SPORT_LABELS[workout.sport] ?? workout.sport;
+
     return {
       id: workout.id,
       title: workout.title?.trim() || 'Entrenamiento sin título',
       scheduledDate: workout.scheduledDate,
-      disciplineLabel: DISCIPLINE_LABELS[workout.discipline] ?? workout.discipline,
-      workoutType: workout.workoutType,
-      workoutTypeLabel: WORKOUT_TYPE_LABELS[workout.workoutType] ?? workout.workoutType,
-      durationLabel: this.calendarDate.formatDuration(workout.estimatedDurationMinutes),
-      distanceLabel: this.calendarDate.formatDistance(workout.plannedDistanceKm ?? null),
-      colorClass: WORKOUT_TYPE_COLORS[workout.workoutType],
-      status: workout.status as WorkoutStatus,
+      sport: workout.sport,
+      sportLabel: workout.modality
+        ? `${sportLabel} ${SPORT_MODALITY_LABELS[workout.modality]}`
+        : sportLabel,
+      category: workout.category,
+      categoryLabel: WORKOUT_CATEGORY_LABELS[workout.category] ?? workout.category,
+      durationLabel: this.calendarDate.formatDuration(
+        secondsToMinutes(workout.plannedDurationSeconds),
+      ),
+      distanceLabel: this.calendarDate.formatDistance(metersToKm(workout.plannedDistanceMeters)),
+      colorClass: WORKOUT_CATEGORY_COLOR_CLASSES[workout.category],
+      status: workout.status,
     };
   }
 
@@ -159,15 +139,19 @@ export class CalendarFacade {
     const currentMonthWorkouts = workouts.filter((workout) =>
       this.calendarDate.isSameMonth(workout.scheduledDate, year, month),
     );
-    const totalDurationMinutes = currentMonthWorkouts.reduce(
-      (total, workout) => total + workout.estimatedDurationMinutes,
-      0,
+    const totalDurationMinutes = secondsToMinutes(
+      currentMonthWorkouts.reduce((total, workout) => total + workout.plannedDurationSeconds, 0),
     );
     const workoutsWithDistance = currentMonthWorkouts.filter(
-      (workout) => workout.plannedDistanceKm !== undefined && workout.plannedDistanceKm !== null,
+      (workout) => workout.plannedDistanceMeters !== undefined,
     );
     const totalDistanceKm = workoutsWithDistance.length
-      ? workoutsWithDistance.reduce((total, workout) => total + (workout.plannedDistanceKm ?? 0), 0)
+      ? metersToKm(
+          workoutsWithDistance.reduce(
+            (total, workout) => total + (workout.plannedDistanceMeters ?? 0),
+            0,
+          ),
+        )
       : null;
 
     return {
@@ -178,4 +162,12 @@ export class CalendarFacade {
       totalWorkouts: currentMonthWorkouts.length,
     };
   }
+}
+
+function secondsToMinutes(seconds: number): number {
+  return Math.round(seconds / 60);
+}
+
+function metersToKm(meters: number | undefined): number | null {
+  return meters === undefined ? null : meters / 1000;
 }

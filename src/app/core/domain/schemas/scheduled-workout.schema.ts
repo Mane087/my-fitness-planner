@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { WORKOUT_STATUSES, WorkoutStatus } from '../workout.enums';
 import { auditFieldsShape, dateOnlySchema, idSchema, isoDateTimeSchema } from './common.schema';

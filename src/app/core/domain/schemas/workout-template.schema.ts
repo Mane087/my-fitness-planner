@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { auditFieldsShape, idSchema } from './common.schema';
 import { refineWorkoutDefinition, workoutDefinitionShape } from './workout-definition.schema';

@@ -1,53 +1,33 @@
 import { TestBed } from '@angular/core/testing';
 
+import type { AthleteProfileEntity } from '../src/app/core/domain/schemas/athlete-profile.schema';
+import type { ScheduledWorkoutEntity } from '../src/app/core/domain/schemas/scheduled-workout.schema';
+import type { TrainingZoneSetEntity } from '../src/app/core/domain/schemas/training-zone-set.schema';
+import type { IntervalStep } from '../src/app/core/domain/schemas/workout-step.schema';
 import {
   IntensityMetric,
-  WorkoutDiscipline,
-  WorkoutType,
+  Sport,
+  StepPhase,
+  WorkoutCategory,
 } from '../src/app/core/domain/workout.enums';
 import {
-  WorkoutBlockTargetType,
-  WorkoutBlockType,
-} from '../src/app/core/domain/workout-block.model';
-import type { TrainingZoneEntity } from '../src/app/core/domain/training-zone.model';
-import type { ScheduledWorkoutEntity } from '../src/app/core/domain/scheduled-workout.model';
-import { ScheduledWorkoutRepository } from '../src/app/core/repositories/scheduled-workout.repository';
-import { SportProfileRepository } from '../src/app/core/repositories/sport-profile.repository';
-import { TrainingZoneRepository } from '../src/app/core/repositories/training-zone.repository';
-import type {
-  TrainingSessionFormValue,
-  WorkoutBlockFormValue,
+  BlockTargetType,
+  type TrainingSessionFormValue,
+  type WorkoutBlockFormValue,
 } from '../src/app/core/interfaces/training-session-form.model';
+import { AthleteProfileRepository } from '../src/app/core/repositories/athlete-profile.repository';
+import { ScheduledWorkoutRepository } from '../src/app/core/repositories/scheduled-workout.repository';
+import { TrainingZoneSetRepository } from '../src/app/core/repositories/training-zone-set.repository';
 import { TrainingSessionFormFacade } from '../src/app/pages/training-session-form-page/training-session-form.facade';
+import { heartRateZoneSet, repeat, scheduledWorkout } from './domain/fixtures';
 
 describe('TrainingSessionFormFacade', () => {
   let facade: TrainingSessionFormFacade;
   let workoutRepo: jest.Mocked<Pick<ScheduledWorkoutRepository, 'findById' | 'create' | 'update'>>;
-  let zoneRepo: jest.Mocked<Pick<TrainingZoneRepository, 'findAll'>>;
-  let profileRepo: jest.Mocked<Pick<SportProfileRepository, 'getActiveProfile'>>;
+  let zoneSetRepo: jest.Mocked<Pick<TrainingZoneSetRepository, 'findAll'>>;
+  let profileRepo: jest.Mocked<Pick<AthleteProfileRepository, 'getActiveProfile'>>;
 
-  const mockZones: TrainingZoneEntity[] = [
-    {
-      id: 'zone-1',
-      name: 'Z1 Recovery',
-      minHeartRate: 96,
-      maxHeartRate: 115,
-      sortOrder: 1,
-      isDefault: true,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-    {
-      id: 'zone-2',
-      name: 'Z2 Endurance',
-      minHeartRate: 116,
-      maxHeartRate: 135,
-      sortOrder: 2,
-      isDefault: true,
-      createdAt: '2026-01-01T00:00:00.000Z',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-    },
-  ];
+  const mockZoneSets: TrainingZoneSetEntity[] = [heartRateZoneSet()];
 
   beforeEach(() => {
     workoutRepo = {
@@ -55,20 +35,38 @@ describe('TrainingSessionFormFacade', () => {
       create: jest.fn(),
       update: jest.fn(),
     };
-    zoneRepo = { findAll: jest.fn() };
+    zoneSetRepo = { findAll: jest.fn() };
     profileRepo = { getActiveProfile: jest.fn() };
 
     TestBed.configureTestingModule({
       providers: [
         TrainingSessionFormFacade,
         { provide: ScheduledWorkoutRepository, useValue: workoutRepo },
-        { provide: TrainingZoneRepository, useValue: zoneRepo },
-        { provide: SportProfileRepository, useValue: profileRepo },
+        { provide: TrainingZoneSetRepository, useValue: zoneSetRepo },
+        { provide: AthleteProfileRepository, useValue: profileRepo },
       ],
     });
 
     facade = TestBed.inject(TrainingSessionFormFacade);
   });
+
+  function buildBlock(overrides: Partial<WorkoutBlockFormValue> = {}): WorkoutBlockFormValue {
+    return {
+      id: 'b1',
+      name: 'Bloque de prueba',
+      phase: StepPhase.Active,
+      targetType: BlockTargetType.Time,
+      durationMinutes: 30,
+      distanceKm: null,
+      trainingZoneId: null,
+      targetRpe: null,
+      cadenceMin: null,
+      cadenceMax: null,
+      instructions: '',
+      sortOrder: 1,
+      ...overrides,
+    };
+  }
 
   /* ───────── calculateTotals ───────── */
 
@@ -84,37 +82,16 @@ describe('TrainingSessionFormFacade', () => {
     });
 
     it('suma duración y distancia de los bloques', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Calentamiento',
-          blockType: WorkoutBlockType.WarmUp,
-          durationMinutes: 10,
-          distanceKm: 2,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-        {
+      const blocks = [
+        buildBlock({ id: 'b1', name: 'Calentamiento', durationMinutes: 10, distanceKm: 2 }),
+        buildBlock({
           id: 'b2',
           name: 'Intervalos',
-          blockType: WorkoutBlockType.Active,
           durationMinutes: 30,
           distanceKm: 8,
-          targetType: WorkoutBlockTargetType.Distance,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
+          targetType: BlockTargetType.Distance,
           sortOrder: 2,
-        },
+        }),
       ];
 
       const result = facade.calculateTotals(blocks);
@@ -123,23 +100,7 @@ describe('TrainingSessionFormFacade', () => {
     });
 
     it('retorna distanceKm null cuando ningún bloque tiene distancia positiva', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Bloque sin distancia',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 20,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ durationMinutes: 20, distanceKm: null })];
 
       const result = facade.calculateTotals(blocks);
 
@@ -147,37 +108,15 @@ describe('TrainingSessionFormFacade', () => {
     });
 
     it('ignora bloques con distanceKm === 0 en el cómputo de distancia total', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Recovery',
-          blockType: WorkoutBlockType.Recovery,
-          durationMinutes: 15,
-          distanceKm: 0,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-        {
+      const blocks = [
+        buildBlock({ id: 'b1', durationMinutes: 15, distanceKm: 0 }),
+        buildBlock({
           id: 'b2',
-          name: 'Trabajo',
-          blockType: WorkoutBlockType.Active,
           durationMinutes: 25,
           distanceKm: null,
-          targetType: WorkoutBlockTargetType.Distance,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
+          targetType: BlockTargetType.Distance,
           sortOrder: 2,
-        },
+        }),
       ];
 
       const result = facade.calculateTotals(blocks);
@@ -192,9 +131,10 @@ describe('TrainingSessionFormFacade', () => {
     const validValue: TrainingSessionFormValue = {
       title: 'Entrenamiento de prueba',
       scheduledDate: '2026-07-25',
-      discipline: WorkoutDiscipline.Road,
-      workoutType: WorkoutType.Endurance,
-      intensityMetric: IntensityMetric.HeartRate,
+      sport: Sport.Cycling,
+      modality: 'road',
+      category: WorkoutCategory.Endurance,
+      primaryMetric: IntensityMetric.HeartRate,
       plannedDistanceKm: null,
       objective: '',
       description: '',
@@ -203,313 +143,161 @@ describe('TrainingSessionFormFacade', () => {
     };
 
     it('retorna error si no hay bloques', () => {
-      const errors = facade.validate(validValue, mockZones);
+      const errors = facade.validate(validValue, mockZoneSets);
 
       expect(errors).toContain('Agrega al menos un bloque de entrenamiento.');
     });
 
     it('retorna error si el título está vacío o solo espacios', () => {
-      const errors = facade.validate({ ...validValue, title: '   ' }, mockZones);
+      const errors = facade.validate({ ...validValue, title: '   ' }, mockZoneSets);
 
       expect(errors).toContain('El título del entrenamiento es requerido.');
     });
 
     it('retorna error si la fecha está vacía', () => {
-      const errors = facade.validate({ ...validValue, scheduledDate: '' }, mockZones);
+      const errors = facade.validate({ ...validValue, scheduledDate: '' }, mockZoneSets);
 
       expect(errors).toContain('La fecha es requerida.');
     });
 
-    it('retorna error si discipline es null', () => {
-      const errors = facade.validate({ ...validValue, discipline: null }, mockZones);
+    it('retorna error si sport es null', () => {
+      const errors = facade.validate({ ...validValue, sport: null }, mockZoneSets);
 
-      expect(errors).toContain('Selecciona una disciplina.');
+      expect(errors).toContain('Selecciona un deporte.');
     });
 
-    it('retorna error si workoutType es null', () => {
-      const errors = facade.validate({ ...validValue, workoutType: null }, mockZones);
+    it('retorna error si category es null', () => {
+      const errors = facade.validate({ ...validValue, category: null }, mockZoneSets);
 
-      expect(errors).toContain('Selecciona el tipo de entrenamiento.');
+      expect(errors).toContain('Selecciona la categoría del entrenamiento.');
     });
 
-    it('retorna error si intensityMetric es null', () => {
-      const errors = facade.validate({ ...validValue, intensityMetric: null }, mockZones);
+    it('retorna error si primaryMetric es null', () => {
+      const errors = facade.validate({ ...validValue, primaryMetric: null }, mockZoneSets);
 
       expect(errors).toContain('Selecciona la métrica de intensidad.');
     });
 
     it('valida que el bloque tenga nombre', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: '   ',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ name: '   ', trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: El nombre del bloque es requerido.');
     });
 
-    it('valida duración requerida del bloque', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: null,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+    it('valida duración requerida en bloque de tiempo', () => {
+      const blocks = [buildBlock({ durationMinutes: null, trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: La duración del bloque es requerida.');
     });
 
-    it('valida que la duración del bloque sea requerida cuando es 0', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 0,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+    it('valida que la duración del bloque de tiempo sea mayor que cero', () => {
+      const blocks = [buildBlock({ durationMinutes: 0, trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
-      expect(errors).toContain('Bloque 1: La duración del bloque es requerida.');
+      expect(errors).toContain('Bloque 1: La duración debe ser mayor que cero.');
     });
 
     it('valida distancia requerida cuando targetType es Distance', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
+      const blocks = [
+        buildBlock({
+          targetType: BlockTargetType.Distance,
           distanceKm: null,
-          targetType: WorkoutBlockTargetType.Distance,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
+          trainingZoneId: 'z2',
+        }),
       ];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: La distancia del bloque es requerida.');
     });
 
-    it('valida que la distancia del bloque sea positiva', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: 0,
-          targetType: WorkoutBlockTargetType.Distance,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
+    it('valida que la distancia del bloque sea mayor que cero', () => {
+      const blocks = [
+        buildBlock({ targetType: BlockTargetType.Distance, distanceKm: 0, trainingZoneId: 'z2' }),
       ];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: La distancia debe ser mayor que cero.');
     });
 
     it('valida RPE entre 1 y 10', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: 15,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ targetRpe: 15, trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: El RPE debe estar entre 1 y 10.');
     });
 
     it('valida cadencia positiva', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: -5,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ cadenceMin: -5, trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: La cadencia debe ser positiva.');
     });
 
     it('valida que cadencia mínima no supere la máxima', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: 100,
-          cadenceMax: 80,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ cadenceMin: 100, cadenceMax: 80, trainingZoneId: 'z2' })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: La cadencia mínima no puede ser mayor que la máxima.');
     });
 
-    it('no valida cadencia si solo un valor está presente', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: 80,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+    it('valida zona requerida cuando la métrica es heart_rate', () => {
+      const blocks = [buildBlock({ trainingZoneId: null })];
 
-      const errors = facade.validate({ ...validValue, blocks }, mockZones);
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
-      expect(errors.filter((e) => e.includes('cadencia'))).toEqual([]);
+      expect(errors).toContain('Bloque 1: Selecciona una zona de entrenamiento.');
     });
 
-    it('valida zona requerida para HeartRate', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+    it('valida que la zona seleccionada exista en el set correspondiente', () => {
+      const blocks = [buildBlock({ trainingZoneId: 'zona-inexistente' })];
 
-      const errors = facade.validate(
-        { ...validValue, intensityMetric: IntensityMetric.HeartRate, blocks },
-        mockZones,
-      );
+      const errors = facade.validate({ ...validValue, blocks }, mockZoneSets);
 
       expect(errors).toContain('Bloque 1: Selecciona una zona de entrenamiento.');
     });
 
     it('valida RPE requerido para métrica Rpe', () => {
-      const blocks: WorkoutBlockFormValue[] = [
-        {
-          id: 'b1',
-          name: 'Test',
-          blockType: WorkoutBlockType.Active,
-          durationMinutes: 30,
-          distanceKm: null,
-          targetType: WorkoutBlockTargetType.Time,
-          trainingZoneId: null,
-          trainingZoneSnapshot: null,
-          targetRpe: null,
-          cadenceMin: null,
-          cadenceMax: null,
-          instructions: '',
-          sortOrder: 1,
-        },
-      ];
+      const blocks = [buildBlock({ targetRpe: null })];
 
       const errors = facade.validate(
-        { ...validValue, intensityMetric: IntensityMetric.Rpe, blocks },
-        mockZones,
+        { ...validValue, primaryMetric: IntensityMetric.Rpe, blocks },
+        mockZoneSets,
       );
 
       expect(errors).toContain('Bloque 1: Define un RPE objetivo.');
     });
 
+    it('valida que exista un set de zonas configurado para la métrica', () => {
+      const blocks = [buildBlock({ trainingZoneId: 'z2' })];
+
+      const errors = facade.validate({ ...validValue, blocks }, []);
+
+      expect(errors).toContain('Configura tus zonas de frecuencia cardiaca antes de usarlas.');
+    });
+
+    it('valida que la métrica aplique al deporte seleccionado', () => {
+      const blocks = [buildBlock({ trainingZoneId: 'z2' })];
+
+      const errors = facade.validate(
+        { ...validValue, primaryMetric: IntensityMetric.Pace, blocks },
+        mockZoneSets,
+      );
+
+      expect(errors).toContain('Ritmo no aplica para Ciclismo.');
+    });
+
     it('retorna errores sin duplicados', () => {
-      const errors = facade.validate({ ...validValue, title: '', discipline: null }, mockZones);
+      const errors = facade.validate({ ...validValue, title: '', sport: null }, mockZoneSets);
 
       const unique = new Set(errors);
       expect(errors.length).toBe(unique.size);
@@ -519,82 +307,114 @@ describe('TrainingSessionFormFacade', () => {
   /* ───────── loadCreateForm ───────── */
 
   describe('loadCreateForm', () => {
-    it('carga perfil y zonas y retorna estado create', async () => {
-      profileRepo.getActiveProfile.mockResolvedValue({
-        id: 'p1',
-        name: 'Deportista',
-        maxHeartRate: 190,
-        preferredDiscipline: 'mixed' as const,
-        preferredIntensityMetric: 'heart_rate' as const,
-        weekStartsOn: 'monday' as const,
-        createdAt: '2026-01-01T00:00:00.000Z',
-        updatedAt: '2026-01-01T00:00:00.000Z',
-      });
-      zoneRepo.findAll.mockResolvedValue(mockZones);
+    it('usa las preferencias del perfil como valores por defecto', async () => {
+      profileRepo.getActiveProfile.mockResolvedValue(buildProfile());
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
 
       const state = await facade.loadCreateForm('2026-07-25');
 
       expect(state.mode).toBe('create');
       expect(state.selectedDate).toBe('2026-07-25');
       expect(state.profileAvailable).toBe(true);
-      expect(state.zones).toEqual(mockZones);
+      expect(state.zoneSets).toEqual(mockZoneSets);
       expect(state.formValue.title).toBe('');
       expect(state.formValue.scheduledDate).toBe('2026-07-25');
-      expect(state.formValue.discipline).toBe(WorkoutDiscipline.Road);
-      expect(state.formValue.workoutType).toBe(WorkoutType.Endurance);
-      expect(state.formValue.intensityMetric).toBe(IntensityMetric.HeartRate);
+      expect(state.formValue.sport).toBe(Sport.Running);
+      expect(state.formValue.modality).toBe('road');
+      expect(state.formValue.category).toBe(WorkoutCategory.Endurance);
+      expect(state.formValue.primaryMetric).toBe(IntensityMetric.Pace);
       expect(state.formValue.blocks).toEqual([]);
     });
 
-    it('retorna profileAvailable false cuando no hay perfil', async () => {
+    it('usa la primera categoría disponible cuando el deporte no admite endurance', async () => {
+      profileRepo.getActiveProfile.mockResolvedValue(
+        buildProfile({
+          preferredSport: Sport.Mobility,
+          preferredIntensityMetric: IntensityMetric.HeartRate,
+        }),
+      );
+      zoneSetRepo.findAll.mockResolvedValue([]);
+
+      const state = await facade.loadCreateForm('2026-07-25');
+
+      expect(state.formValue.sport).toBe(Sport.Mobility);
+      expect(state.formValue.modality).toBeNull();
+      expect(state.formValue.category).toBe(WorkoutCategory.Mobility);
+      expect(state.formValue.primaryMetric).toBe(IntensityMetric.Rpe);
+    });
+
+    it('retorna profileAvailable false y deporte por defecto cuando no hay perfil', async () => {
       profileRepo.getActiveProfile.mockResolvedValue(null);
-      zoneRepo.findAll.mockResolvedValue(mockZones);
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
 
       const state = await facade.loadCreateForm('2026-07-25');
 
       expect(state.profileAvailable).toBe(false);
-      expect(state.formValue.discipline).toBeNull();
+      expect(state.formValue.sport).toBe(Sport.Cycling);
+      expect(state.formValue.category).toBe(WorkoutCategory.Endurance);
+      expect(state.formValue.primaryMetric).toBe(IntensityMetric.HeartRate);
     });
   });
 
   /* ───────── loadEditForm ───────── */
 
   describe('loadEditForm', () => {
-    it('carga workout, perfil y zonas, y retorna estado edit', async () => {
+    it('mapea los pasos de intervalo a bloques del formulario', async () => {
+      const steps: IntervalStep[] = [
+        {
+          id: 'warm-up',
+          kind: 'interval',
+          name: 'Calentamiento',
+          phase: StepPhase.WarmUp,
+          duration: { type: 'time', seconds: 900 },
+        },
+        {
+          id: 'active-hr',
+          kind: 'interval',
+          name: 'Trabajo en zona',
+          phase: StepPhase.Active,
+          duration: { type: 'time', seconds: 1800 },
+          target: {
+            metric: 'heart_rate',
+            zoneId: 'z2',
+            zoneSnapshot: {
+              zoneSetId: 'zone-set-hr',
+              zoneId: 'z2',
+              name: 'Z2',
+              metric: 'heart_rate',
+              minValue: 116,
+              maxValue: 135,
+            },
+          },
+          cadenceRpm: { min: 80, max: 90 },
+          notes: 'Mantén cadencia alta',
+        },
+        {
+          id: 'active-distance',
+          kind: 'interval',
+          name: 'Tramo largo',
+          phase: StepPhase.Active,
+          duration: { type: 'distance', meters: 5000 },
+          target: { metric: 'rpe', value: 6 },
+        },
+      ];
       const mockWorkout: ScheduledWorkoutEntity = {
         id: 'w-1',
         title: 'Entreno editado',
         scheduledDate: '2026-07-26',
-        discipline: WorkoutDiscipline.Mtb,
-        workoutType: WorkoutType.Tempo,
-        intensityMetric: IntensityMetric.Rpe,
-        estimatedDurationMinutes: 60,
-        status: 'planned' as const,
-        blocks: [
-          {
-            id: 'b1',
-            name: 'Calentamiento',
-            blockType: WorkoutBlockType.WarmUp,
-            targetType: WorkoutBlockTargetType.Time,
-            durationMinutes: 15,
-            sortOrder: 1,
-          },
-          {
-            id: 'b2',
-            name: 'Trabajo',
-            blockType: WorkoutBlockType.Active,
-            targetType: WorkoutBlockTargetType.Time,
-            durationMinutes: 45,
-            targetRpe: 7,
-            sortOrder: 2,
-          },
-        ],
+        sport: Sport.Cycling,
+        modality: 'road',
+        category: WorkoutCategory.Tempo,
+        primaryMetric: IntensityMetric.HeartRate,
+        steps,
+        plannedDurationSeconds: 2700,
+        status: 'planned',
         createdAt: '2026-07-25T12:00:00.000Z',
         updatedAt: '2026-07-25T12:00:00.000Z',
       };
 
       profileRepo.getActiveProfile.mockResolvedValue(null);
-      zoneRepo.findAll.mockResolvedValue(mockZones);
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
       workoutRepo.findById.mockResolvedValue(mockWorkout);
 
       const state = await facade.loadEditForm('w-1');
@@ -602,17 +422,47 @@ describe('TrainingSessionFormFacade', () => {
       expect(state.mode).toBe('edit');
       expect(state.selectedDate).toBe('2026-07-26');
       expect(state.formValue.title).toBe('Entreno editado');
-      expect(state.formValue.discipline).toBe(WorkoutDiscipline.Mtb);
-      expect(state.formValue.blocks.length).toBe(2);
-      expect(state.formValue.blocks[1].targetRpe).toBe(7);
+      expect(state.formValue.sport).toBe(Sport.Cycling);
+      expect(state.formValue.blocks.length).toBe(3);
+
+      const [warmUp, activeHr, activeDistance] = state.formValue.blocks;
+
+      expect(warmUp.durationMinutes).toBe(15);
+      expect(warmUp.distanceKm).toBeNull();
+      expect(warmUp.trainingZoneId).toBeNull();
+      expect(warmUp.instructions).toBe('');
+
+      expect(activeHr.durationMinutes).toBe(30);
+      expect(activeHr.trainingZoneId).toBe('z2');
+      expect(activeHr.cadenceMin).toBe(80);
+      expect(activeHr.cadenceMax).toBe(90);
+      expect(activeHr.instructions).toBe('Mantén cadencia alta');
+
+      expect(activeDistance.targetType).toBe(BlockTargetType.Distance);
+      expect(activeDistance.distanceKm).toBe(5);
+      // Not the single block of the workout, so no duration estimate is carried over.
+      expect(activeDistance.durationMinutes).toBeNull();
+      expect(activeDistance.targetRpe).toBe(6);
     });
 
     it('lanza error si el workout no existe', async () => {
       profileRepo.getActiveProfile.mockResolvedValue(null);
-      zoneRepo.findAll.mockResolvedValue(mockZones);
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
       workoutRepo.findById.mockResolvedValue(null);
 
       await expect(facade.loadEditForm('unknown')).rejects.toThrow('El entrenamiento no existe.');
+    });
+
+    it('lanza error si el entrenamiento tiene repeticiones o ejercicios', async () => {
+      const workoutWithRepeat = scheduledWorkout({ id: 'w-repeat', steps: [repeat('main')] });
+
+      profileRepo.getActiveProfile.mockResolvedValue(null);
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
+      workoutRepo.findById.mockResolvedValue(workoutWithRepeat);
+
+      await expect(facade.loadEditForm('w-repeat')).rejects.toThrow(
+        'Este entrenamiento tiene repeticiones o ejercicios que este formulario todavía no puede editar.',
+      );
     });
   });
 
@@ -623,9 +473,10 @@ describe('TrainingSessionFormFacade', () => {
       const invalidValue: TrainingSessionFormValue = {
         title: '',
         scheduledDate: '',
-        discipline: null,
-        workoutType: null,
-        intensityMetric: null,
+        sport: null,
+        modality: null,
+        category: null,
+        primaryMetric: null,
         plannedDistanceKm: null,
         objective: '',
         description: '',
@@ -633,104 +484,113 @@ describe('TrainingSessionFormFacade', () => {
         blocks: [],
       };
 
-      await expect(facade.save(invalidValue, mockZones)).rejects.toThrow();
+      await expect(facade.save(invalidValue, mockZoneSets)).rejects.toThrow();
     });
 
-    it('crea un nuevo workout cuando el formulario es válido', async () => {
+    it('crea un nuevo workout con el snapshot de zona copiado del set', async () => {
       const value: TrainingSessionFormValue = {
         title: 'Entrenamiento válido',
         scheduledDate: '2026-07-25',
-        discipline: WorkoutDiscipline.Road,
-        workoutType: WorkoutType.Endurance,
-        intensityMetric: IntensityMetric.HeartRate,
+        sport: Sport.Cycling,
+        modality: 'road',
+        category: WorkoutCategory.Endurance,
+        primaryMetric: IntensityMetric.HeartRate,
         plannedDistanceKm: null,
         objective: 'Test objetivo',
         description: '',
         notes: '',
         blocks: [
-          {
-            id: 'b1',
+          buildBlock({
             name: 'Calentamiento',
-            blockType: WorkoutBlockType.WarmUp,
+            phase: StepPhase.WarmUp,
             durationMinutes: 15,
-            distanceKm: null,
-            targetType: WorkoutBlockTargetType.Time,
-            trainingZoneId: 'zone-1',
-            trainingZoneSnapshot: null,
-            targetRpe: null,
-            cadenceMin: null,
-            cadenceMax: null,
+            trainingZoneId: 'z1',
             instructions: 'Suave',
-            sortOrder: 1,
-          },
+          }),
         ],
       };
 
       workoutRepo.findById.mockResolvedValue(null);
       workoutRepo.create.mockImplementation(async (workout: ScheduledWorkoutEntity) => workout);
 
-      const result = await facade.save(value, mockZones);
+      const result = await facade.save(value, mockZoneSets);
 
       expect(result.title).toBe('Entrenamiento válido');
-      expect(result.estimatedDurationMinutes).toBe(15);
-      expect(result.blocks.length).toBe(1);
+      expect(result.plannedDurationSeconds).toBe(15 * 60);
+      expect(result.plannedDistanceMeters).toBeUndefined();
+      expect(result.steps.length).toBe(1);
+
+      const [step] = result.steps as IntervalStep[];
+      expect(step.target).toEqual({
+        metric: 'heart_rate',
+        zoneId: 'z1',
+        zoneSnapshot: {
+          zoneSetId: 'zone-set-hr',
+          zoneId: 'z1',
+          name: 'Z1',
+          metric: 'heart_rate',
+          minValue: 97,
+          maxValue: 116,
+        },
+      });
       expect(workoutRepo.create).toHaveBeenCalledTimes(1);
       expect(workoutRepo.update).not.toHaveBeenCalled();
     });
 
-    it('actualiza un workout existente cuando tiene id', async () => {
+    it('actualiza un workout existente conservando id, createdAt, status, completion y sourceTemplateId', async () => {
       const value: TrainingSessionFormValue = {
         id: 'existing-1',
         title: 'Actualizado',
         scheduledDate: '2026-07-25',
-        discipline: WorkoutDiscipline.Road,
-        workoutType: WorkoutType.Endurance,
-        intensityMetric: IntensityMetric.HeartRate,
+        sport: Sport.Cycling,
+        modality: 'road',
+        category: WorkoutCategory.Endurance,
+        primaryMetric: IntensityMetric.HeartRate,
         plannedDistanceKm: null,
         objective: '',
         description: '',
         notes: '',
-        blocks: [
-          {
-            id: 'b1',
-            name: 'Bloque único',
-            blockType: WorkoutBlockType.Active,
-            durationMinutes: 30,
-            distanceKm: null,
-            targetType: WorkoutBlockTargetType.Time,
-            trainingZoneId: 'zone-1',
-            trainingZoneSnapshot: null,
-            targetRpe: null,
-            cadenceMin: null,
-            cadenceMax: null,
-            instructions: '',
-            sortOrder: 1,
-          },
-        ],
+        blocks: [buildBlock({ name: 'Bloque único', durationMinutes: 30, trainingZoneId: 'z1' })],
       };
 
-      const existingWorkout: ScheduledWorkoutEntity = {
+      const existingWorkout = scheduledWorkout({
         id: 'existing-1',
         title: 'Original',
-        scheduledDate: '2026-07-25',
-        discipline: WorkoutDiscipline.Road,
-        workoutType: WorkoutType.Endurance,
-        intensityMetric: IntensityMetric.HeartRate,
-        estimatedDurationMinutes: 30,
-        status: 'planned' as const,
-        blocks: [],
+        modality: 'road',
+        status: 'completed',
+        completion: { completedAt: '2026-07-25T12:00:00.000Z', durationSeconds: 1800 },
+        sourceTemplateId: 'template-99',
         createdAt: '2026-07-24T10:00:00.000Z',
         updatedAt: '2026-07-24T10:00:00.000Z',
-      };
+      });
 
       workoutRepo.findById.mockResolvedValue(existingWorkout);
       workoutRepo.update.mockImplementation(async (workout: ScheduledWorkoutEntity) => workout);
 
-      const result = await facade.save(value, mockZones);
+      const result = await facade.save(value, mockZoneSets);
 
       expect(result.title).toBe('Actualizado');
+      expect(result.id).toBe('existing-1');
+      expect(result.createdAt).toBe('2026-07-24T10:00:00.000Z');
+      expect(result.status).toBe('completed');
+      expect(result.completion).toEqual(existingWorkout.completion);
+      expect(result.sourceTemplateId).toBe('template-99');
       expect(workoutRepo.update).toHaveBeenCalledTimes(1);
       expect(workoutRepo.create).not.toHaveBeenCalled();
     });
   });
 });
+
+function buildProfile(overrides: Partial<AthleteProfileEntity> = {}): AthleteProfileEntity {
+  return {
+    id: 'p1',
+    name: 'Deportista',
+    maxHeartRate: 190,
+    preferredSport: Sport.Running,
+    preferredIntensityMetric: IntensityMetric.Pace,
+    weekStartsOn: 'monday',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
+  };
+}

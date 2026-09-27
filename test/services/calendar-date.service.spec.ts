@@ -1,4 +1,4 @@
-import { WeekStartsOn } from '../../src/app/core/domain/sport-profile.model';
+import { WeekStartsOn } from '../../src/app/core/domain/calendar.enums';
 import { CalendarDateService } from '../../src/app/core/services/calendar-date.service';
 
 describe('CalendarDateService', () => {

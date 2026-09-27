@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { CALENDAR_DEFAULT_VIEWS, TIME_FORMATS, WEEK_STARTS_ON_VALUES } from '../calendar.enums';
 import { auditFieldsShape, idSchema } from './common.schema';

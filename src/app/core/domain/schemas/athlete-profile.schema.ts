@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import * as z from 'zod';
 
 import { WEEK_STARTS_ON_VALUES } from '../calendar.enums';
 import { INTENSITY_METRICS, SPORTS } from '../workout.enums';

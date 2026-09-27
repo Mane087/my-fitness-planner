@@ -1,56 +1,60 @@
 import { inject, Injectable } from '@angular/core';
-import type { WorkoutTemplateEntity } from '../domain/workout-template.model';
+
+import {
+  workoutTemplateSchema,
+  type WorkoutTemplateEntity,
+} from '../domain/schemas/workout-template.schema';
+import type { Sport } from '../domain/workout.enums';
 import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
-import {
-  assertValidBlocks,
-  createId,
-  isWorkoutDiscipline,
-  isWorkoutType,
-  nowIso,
-} from './repository-utils';
+import { createId, nowIso, parseEntity } from './repository-utils';
 
 @Injectable({ providedIn: 'root' })
 export class WorkoutTemplateRepository {
   private readonly indexedDb = inject(IndexedDbService);
 
+  findAll(): Promise<WorkoutTemplateEntity[]> {
+    return this.indexedDb.getAll(IndexedDbStore.WorkoutTemplates);
+  }
+
+  // Booleans are not valid IndexedDB keys, so archived state is filtered in memory.
   async findAllActive(): Promise<WorkoutTemplateEntity[]> {
-    return this.indexedDb.getAllFromIndex(
-      IndexedDbStore.WorkoutTemplates,
-      'by_archived',
-      false as unknown as IDBValidKey,
-    );
+    const templates = await this.findAll();
+    return templates.filter((template) => !template.isArchived);
   }
 
   async findAllArchived(): Promise<WorkoutTemplateEntity[]> {
-    return this.indexedDb.getAllFromIndex(
-      IndexedDbStore.WorkoutTemplates,
-      'by_archived',
-      true as unknown as IDBValidKey,
-    );
+    const templates = await this.findAll();
+    return templates.filter((template) => template.isArchived);
+  }
+
+  findBySport(sport: Sport): Promise<WorkoutTemplateEntity[]> {
+    return this.indexedDb.getAllFromIndex(IndexedDbStore.WorkoutTemplates, 'by_sport', sport);
   }
 
   findById(id: string): Promise<WorkoutTemplateEntity | null> {
     return this.indexedDb.getById(IndexedDbStore.WorkoutTemplates, id);
   }
 
-  create(template: WorkoutTemplateEntity): Promise<WorkoutTemplateEntity> {
+  async create(template: WorkoutTemplateEntity): Promise<WorkoutTemplateEntity> {
     const timestamp = nowIso();
-    const nextTemplate = {
+    const nextTemplate = parseEntity(workoutTemplateSchema, 'Workout template', {
       ...template,
       id: template.id || createId(),
-      blocks: template.blocks ?? [],
-      archived: template.archived ?? false,
+      isArchived: template.isArchived ?? false,
       createdAt: template.createdAt || timestamp,
       updatedAt: timestamp,
-    };
-    this.validate(nextTemplate);
+    });
+
     return this.indexedDb.add(IndexedDbStore.WorkoutTemplates, nextTemplate);
   }
 
-  update(template: WorkoutTemplateEntity): Promise<WorkoutTemplateEntity> {
-    const nextTemplate = { ...template, blocks: template.blocks ?? [], updatedAt: nowIso() };
-    this.validate(nextTemplate);
+  async update(template: WorkoutTemplateEntity): Promise<WorkoutTemplateEntity> {
+    const nextTemplate = parseEntity(workoutTemplateSchema, 'Workout template', {
+      ...template,
+      updatedAt: nowIso(),
+    });
+
     return this.indexedDb.put(IndexedDbStore.WorkoutTemplates, nextTemplate);
   }
 
@@ -62,7 +66,11 @@ export class WorkoutTemplateRepository {
     await this.setArchived(id, false);
   }
 
-  private async setArchived(id: string, archived: boolean): Promise<void> {
+  delete(id: string): Promise<void> {
+    return this.indexedDb.delete(IndexedDbStore.WorkoutTemplates, id);
+  }
+
+  private async setArchived(id: string, isArchived: boolean): Promise<void> {
     const template = await this.findById(id);
 
     if (!template) {
@@ -71,28 +79,8 @@ export class WorkoutTemplateRepository {
 
     await this.indexedDb.put(IndexedDbStore.WorkoutTemplates, {
       ...template,
-      archived,
+      isArchived,
       updatedAt: nowIso(),
     });
-  }
-
-  private validate(template: WorkoutTemplateEntity): void {
-    if (!template.title.trim()) {
-      throw new Error('Workout template title is required.');
-    }
-
-    if (template.estimatedDurationMinutes <= 0) {
-      throw new Error('Workout template duration must be greater than 0.');
-    }
-
-    if (!isWorkoutType(template.workoutType)) {
-      throw new Error('Workout template type is invalid.');
-    }
-
-    if (!isWorkoutDiscipline(template.discipline)) {
-      throw new Error('Workout template discipline is invalid.');
-    }
-
-    assertValidBlocks(template.blocks);
   }
 }

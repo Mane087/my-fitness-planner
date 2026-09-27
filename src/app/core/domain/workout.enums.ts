@@ -104,6 +104,18 @@ export const ZONE_METRICS_BY_SPORT: Record<Sport, readonly ZoneMetric[]> = {
   plyometrics: [],
 };
 
+export function supportsZoneMetric(sport: Sport, metric: IntensityMetric): metric is ZoneMetric {
+  return (ZONE_METRICS_BY_SPORT[sport] as readonly IntensityMetric[]).includes(metric);
+}
+
+/**
+ * Sport whose heart rate zone set is used for a profile. Sports without zones
+ * (mobility, plyometrics) fall back to cycling.
+ */
+export function resolveHeartRateZoneSport(sport: Sport): Sport {
+  return supportsZoneMetric(sport, IntensityMetric.HeartRate) ? sport : Sport.Cycling;
+}
+
 export const StepPhase = {
   WarmUp: 'warm_up',
   Active: 'active',
