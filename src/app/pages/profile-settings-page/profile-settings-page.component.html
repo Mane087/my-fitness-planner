@@ -40,7 +40,7 @@
               labelText="FC máxima (ppm)"
               inputType="number"
               inputId="max-heart-rate"
-              inputPlaceholder="100-230"
+              inputPlaceholder="100-250"
             />
 
             <app-input-form
@@ -85,7 +85,6 @@
             />
             <app-action-button
               label="Recalcular desde FC máxima"
-              icon="/icons/plus.svg"
               title="Recalcular zonas desde la FC máxima"
               (pressed)="resetZonesToDefault()"
             />
@@ -95,11 +94,11 @@
             <table class="w-full min-w-215 border-collapse">
               <thead>
                 <tr class="bg-[#606D80] text-left text-white">
-                  <th class="px-4 py-3">Zone</th>
-                  <th class="px-4 py-3">Minimum (ppm)</th>
-                  <th class="px-4 py-3">Maximum (ppm)</th>
-                  <th class="px-4 py-3">Description</th>
-                  <th class="px-4 py-3">Actions</th>
+                  <th class="px-4 py-3">Zona</th>
+                  <th class="px-4 py-3">Mínimo (ppm)</th>
+                  <th class="px-4 py-3">Máximo (ppm)</th>
+                  <th class="px-4 py-3">Descripción</th>
+                  <th class="px-4 py-3">Acciones</th>
                 </tr>
               </thead>
               <tbody formArrayName="zones">
@@ -156,14 +155,14 @@
         <div class="flex flex-col gap-3 sm:flex-row sm:justify-end">
           <app-button
             label="Cancelar"
-            title="cancelar"
+            title="Cancelar"
             variant="secondary"
             (pressed)="cancel()"
             [disabled]="saving()"
           />
           <app-button
             [label]="saving() ? 'Guardando...' : 'Guardar cambios'"
-            title="guardar"
+            title="Guardar"
             kind="action"
             htmlType="submit"
             variant="primary"

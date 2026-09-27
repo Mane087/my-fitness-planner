@@ -44,7 +44,7 @@ import {
   type TrainingSessionFormValue,
   type TrainingSessionTotals,
   type WorkoutBlockFormValue,
-} from '../../core/interfaces/training-session-form.model';
+} from '../../core/models/training-session-form.model';
 import {
   INTENSITY_METRIC_LABELS,
   SPORT_LABELS,
@@ -53,7 +53,7 @@ import {
   STEP_PHASE_LABELS,
   WORKOUT_CATEGORY_LABELS,
 } from '../../core/models/workout-labels';
-import type { Options } from '../../core/types/option';
+import type { Options } from '../../core/models/option';
 
 // IMPORT UTILS
 import { createId } from '../../core/repositories/repository-utils';
@@ -61,7 +61,7 @@ import { TrainingSessionFormFacade } from './training-session-form.facade';
 
 // IMPORT COMPONENTS
 import { AlertComponent } from '../../components/alert/alert.component';
-import { AlertType } from '../../core/types/alert';
+import { AlertType } from '../../core/models/alert';
 import { InputFormComponent } from '../../components/input-form/input-form.component';
 import { SelectComponent } from '../../components/select/select.component';
 

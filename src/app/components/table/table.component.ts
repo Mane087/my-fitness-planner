@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, input, output } from '@angular/core';
-import { Column } from '../../core/types/columns';
-import { TableRow } from '../../core/types/table-row';
+import { Column } from '../../core/models/columns';
+import { TableRow } from '../../core/models/table-row';
 
 @Component({
   selector: 'app-table',

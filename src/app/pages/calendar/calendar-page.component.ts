@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@a
 import { NgClass } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 
-import type { CalendarMonthViewModel } from '../../core/interfaces/calendar-view-models';
+import type { CalendarMonthViewModel } from '../../core/models/calendar-view-models';
 import { CalendarFacade } from '../../core/services/calendar-facade.service';
 import { ButtonComponent } from '../../components/button/button.component';
 

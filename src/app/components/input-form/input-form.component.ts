@@ -1,7 +1,7 @@
 import { Component, forwardRef, input, signal, ViewChild, ElementRef } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
 
-import { InputType } from '../../core/types/input-type';
+import { InputType } from '../../core/models/input-type';
 
 @Component({
   selector: 'app-input-form',

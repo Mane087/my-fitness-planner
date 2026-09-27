@@ -1,6 +1,6 @@
 import { Component, forwardRef, input, output, signal } from '@angular/core';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR } from '@angular/forms';
-import { Options } from '../../core/types/option';
+import { Options } from '../../core/models/option';
 import { NgClass } from '@angular/common';
 
 @Component({

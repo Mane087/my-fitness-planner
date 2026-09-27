@@ -8,7 +8,7 @@ import type {
   CalendarMonthSummaryViewModel,
   CalendarMonthViewModel,
   CalendarWorkoutCardViewModel,
-} from '../interfaces/calendar-view-models';
+} from '../models/calendar-view-models';
 import {
   SPORT_LABELS,
   SPORT_MODALITY_LABELS,

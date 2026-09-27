@@ -15,8 +15,11 @@ export class HomePageComponent {
   private readonly router = inject(Router);
   private readonly athleteProfileRepository = inject(AthleteProfileRepository);
 
+  /** First run: the user configures the profile before planning. */
   async onNavigateToCalendar(): Promise<void> {
-    const profile = await this.athleteProfileRepository.getActiveProfile();
-    await this.router.navigateByUrl(profile ? '/calendar' : '/profile');
+    const hasConfiguredProfile = await this.athleteProfileRepository
+      .hasConfiguredProfile()
+      .catch(() => false);
+    await this.router.navigateByUrl(hasConfiguredProfile ? '/calendar' : '/profile');
   }
 }

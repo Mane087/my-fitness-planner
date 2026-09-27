@@ -31,7 +31,7 @@ import {
   type TrainingSessionFormValue,
   type TrainingSessionTotals,
   type WorkoutBlockFormValue,
-} from '../../core/interfaces/training-session-form.model';
+} from '../../core/models/training-session-form.model';
 import { INTENSITY_METRIC_LABELS, SPORT_LABELS } from '../../core/models/workout-labels';
 import { AthleteProfileRepository } from '../../core/repositories/athlete-profile.repository';
 import { createId, nowIso } from '../../core/repositories/repository-utils';

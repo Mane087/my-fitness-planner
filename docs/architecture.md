@@ -65,12 +65,22 @@ pages / layouts / components
 
 ## Inicialización
 
-`LocalPersistenceService.initialize()` se ejecuta al arrancar la aplicación:
+`LocalPersistenceService.initialize()` se ejecuta al arrancar la aplicación, con `provideAppInitializer` en `app.config.ts`:
 
 1. Abre la base de datos y ejecuta las migraciones pendientes (`storage/indexed-db.migrations.ts`).
 2. Crea la configuración de la aplicación si no existe.
 3. Crea el perfil del atleta si no existe.
-4. Siembra el conjunto de zonas de frecuencia cardiaca del deporte preferido si no existe.
+4. Siembra el conjunto de zonas de frecuencia cardiaca del deporte preferido si no existe. Si ese deporte no usa zonas (movilidad, pliometría), usa el de ciclismo.
+
+Si la inicialización falla (por ejemplo, el navegador no permite IndexedDB), el error se registra en consola y la aplicación arranca de todos modos; cada página muestra su propio mensaje de error de almacenamiento.
+
+### Primer uso
+
+Como el perfil por defecto siempre existe después de la inicialización, la página de inicio decide a dónde enviar al usuario con `AthleteProfileRepository.hasConfiguredProfile()`: el perfil por defecto tiene `createdAt === updatedAt` hasta que el usuario lo guarda por primera vez. Sin perfil guardado, el botón "Ir al calendario" lleva a `/profile`; con perfil guardado, a `/calendar`.
+
+## Navegación
+
+`AppShellComponent` (`layouts/app-shell/`) envuelve todas las rutas con la barra de navegación principal: Calendario, Biblioteca y Perfil. La ruta `/library` usa `ComingSoonPageComponent` hasta que exista la biblioteca de plantillas (#17); el título llega por `data` de la ruta gracias a `withComponentInputBinding()`.
 
 ## Migraciones
 
