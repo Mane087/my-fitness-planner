@@ -9,6 +9,7 @@ import {
   cloneValue,
   createId,
   isWorkoutDiscipline,
+  isIntensityMetric,
   isWorkoutStatus,
   isWorkoutType,
   nowIso,
@@ -116,6 +117,14 @@ export class ScheduledWorkoutRepository {
 
     if (!isWorkoutDiscipline(workout.discipline)) {
       throw new Error('Scheduled workout discipline is invalid.');
+    }
+
+    if (!isIntensityMetric(workout.intensityMetric)) {
+      throw new Error('Scheduled workout intensity metric is invalid.');
+    }
+
+    if (workout.blocks.length === 0) {
+      throw new Error('Scheduled workout requires at least one block.');
     }
 
     if (!isWorkoutStatus(workout.status)) {

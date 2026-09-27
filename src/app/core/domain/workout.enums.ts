@@ -30,6 +30,15 @@ export const WorkoutStatus = {
 
 export type WorkoutStatus = (typeof WorkoutStatus)[keyof typeof WorkoutStatus];
 
+export const IntensityMetric = {
+  HeartRate: 'heart_rate',
+  Rpe: 'rpe',
+  Mixed: 'mixed',
+} as const;
+
+export type IntensityMetric = (typeof IntensityMetric)[keyof typeof IntensityMetric];
+
 export const WORKOUT_TYPES = Object.values(WorkoutType) as WorkoutType[];
 export const WORKOUT_DISCIPLINES = Object.values(WorkoutDiscipline) as WorkoutDiscipline[];
 export const WORKOUT_STATUSES = Object.values(WorkoutStatus) as WorkoutStatus[];
+export const INTENSITY_METRICS = Object.values(IntensityMetric) as IntensityMetric[];
