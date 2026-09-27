@@ -1,0 +1,208 @@
+<fieldset
+  class="rounded-2xl border border-slate-300 bg-white p-4"
+  [attr.aria-invalid]="errors().length > 0 ? 'true' : null"
+  [class.border-red-400]="errors().length > 0"
+>
+  <legend class="px-2 font-bold">Paso {{ position() }} · Intervalo</legend>
+
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <label class="flex flex-col gap-1 lg:col-span-2" [for]="idPrefix() + '-name'">
+      <span>Nombre *</span>
+      <input
+        [id]="idPrefix() + '-name'"
+        class="rounded-lg border border-slate-300 px-3 py-2"
+        [value]="step().name"
+        placeholder="Ej. Calentamiento"
+        (input)="setName($event)"
+      />
+    </label>
+
+    <label class="flex flex-col gap-1" [for]="idPrefix() + '-phase'">
+      <span>Fase</span>
+      <select
+        [id]="idPrefix() + '-phase'"
+        class="rounded-lg border border-slate-300 px-3 py-2"
+        (change)="setPhase($event)"
+      >
+        @for (option of phaseOptions; track option.value) {
+          <option [value]="option.value" [selected]="option.value === step().phase">
+            {{ option.label }}
+          </option>
+        }
+      </select>
+    </label>
+
+    <label class="flex flex-col gap-1" [for]="idPrefix() + '-duration-type'">
+      <span>Duración por</span>
+      <select
+        [id]="idPrefix() + '-duration-type'"
+        class="rounded-lg border border-slate-300 px-3 py-2"
+        (change)="setDurationType($event)"
+      >
+        @for (option of durationTypeOptions; track option.value) {
+          <option [value]="option.value" [selected]="option.value === step().duration.type">
+            {{ option.label }}
+          </option>
+        }
+      </select>
+    </label>
+
+    @switch (step().duration.type) {
+      @case ('time') {
+        <label class="flex flex-col gap-1" [for]="idPrefix() + '-minutes'">
+          <span>Minutos</span>
+          <input
+            [id]="idPrefix() + '-minutes'"
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            type="number"
+            min="0"
+            [value]="timeParts().minutes"
+            (input)="setMinutes($event)"
+          />
+        </label>
+        <label class="flex flex-col gap-1" [for]="idPrefix() + '-seconds'">
+          <span>Segundos</span>
+          <input
+            [id]="idPrefix() + '-seconds'"
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            type="number"
+            min="0"
+            max="59"
+            [value]="timeParts().seconds"
+            (input)="setSeconds($event)"
+          />
+        </label>
+      }
+      @case ('distance') {
+        <label class="flex flex-col gap-1" [for]="idPrefix() + '-km'">
+          <span>Distancia (km)</span>
+          <input
+            [id]="idPrefix() + '-km'"
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            type="number"
+            min="0.01"
+            step="0.01"
+            [value]="distanceKm()"
+            (input)="setDistanceKm($event)"
+          />
+        </label>
+      }
+      @case ('open') {
+        <p class="self-end text-sm text-slate-500 lg:col-span-2">
+          Sin duración fija: termina cuando tú decidas.
+        </p>
+      }
+    }
+
+    @if (isZoneMetric()) {
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-zone'">
+        <span>Zona</span>
+        <select
+          [id]="idPrefix() + '-zone'"
+          class="rounded-lg border border-slate-300 px-3 py-2"
+          (change)="setZone($event)"
+        >
+          <option value="" [selected]="selectedZoneId() === ''">Sin zona</option>
+          @for (option of zoneOptions(); track option.value) {
+            <option [value]="option.value" [selected]="option.value === selectedZoneId()">
+              {{ option.label }}
+            </option>
+          }
+        </select>
+      </label>
+    } @else if (needsZoneSet()) {
+      <p class="self-end text-sm text-amber-700">
+        No hay zonas para esta métrica.
+        <a routerLink="/profile" class="font-semibold underline">Configúralas</a>.
+      </p>
+    }
+
+    @if (isRpeMetric()) {
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-rpe'">
+        <span>RPE (1-10)</span>
+        <input
+          [id]="idPrefix() + '-rpe'"
+          class="rounded-lg border border-slate-300 px-3 py-2"
+          type="number"
+          min="1"
+          max="10"
+          [value]="rpeValue()"
+          (input)="setRpe($event)"
+        />
+      </label>
+    }
+
+    @if (isCycling()) {
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-cadence-min'">
+        <span>Cadencia mín. (rpm)</span>
+        <input
+          [id]="idPrefix() + '-cadence-min'"
+          class="rounded-lg border border-slate-300 px-3 py-2"
+          type="number"
+          min="0"
+          [value]="step().cadenceRpm?.min ?? null"
+          (input)="setCadence('min', $event)"
+        />
+      </label>
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-cadence-max'">
+        <span>Cadencia máx. (rpm)</span>
+        <input
+          [id]="idPrefix() + '-cadence-max'"
+          class="rounded-lg border border-slate-300 px-3 py-2"
+          type="number"
+          min="0"
+          [value]="step().cadenceRpm?.max ?? null"
+          (input)="setCadence('max', $event)"
+        />
+      </label>
+    }
+
+    <label class="flex flex-col gap-1 sm:col-span-2 lg:col-span-4" [for]="idPrefix() + '-notes'">
+      <span>Instrucciones</span>
+      <textarea
+        [id]="idPrefix() + '-notes'"
+        class="rounded-lg border border-slate-300 px-3 py-2"
+        rows="2"
+        [value]="step().notes ?? ''"
+        (input)="setNotes($event)"
+      ></textarea>
+    </label>
+  </div>
+
+  @if (errors().length > 0) {
+    <ul class="mt-3 list-disc pl-5 text-sm text-red-700" role="alert">
+      @for (error of errors(); track error) {
+        <li>{{ error }}</li>
+      }
+    </ul>
+  }
+
+  <div class="mt-4 flex flex-wrap justify-end gap-2">
+    <button
+      type="button"
+      class="rounded-lg border px-3 py-2 disabled:opacity-40"
+      [disabled]="!canMoveUp()"
+      [attr.aria-label]="'Subir paso ' + position()"
+      (click)="moved.emit(-1)"
+    >
+      Subir
+    </button>
+    <button
+      type="button"
+      class="rounded-lg border px-3 py-2 disabled:opacity-40"
+      [disabled]="!canMoveDown()"
+      [attr.aria-label]="'Bajar paso ' + position()"
+      (click)="moved.emit(1)"
+    >
+      Bajar
+    </button>
+    <button
+      type="button"
+      class="rounded-lg border border-red-300 px-3 py-2 text-red-700"
+      [attr.aria-label]="'Eliminar paso ' + position()"
+      (click)="removed.emit()"
+    >
+      Eliminar
+    </button>
+  </div>
+</fieldset>
