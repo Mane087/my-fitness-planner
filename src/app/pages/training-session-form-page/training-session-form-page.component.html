@@ -16,7 +16,16 @@
     </button>
   </header>
   @defer (when !loading()) {
-    @if (!profileAvailable()) {
+    @if (loadError()) {
+      <div
+        class="mx-auto max-w-3xl rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200"
+      >
+        <p>{{ loadError() }}</p>
+        <a routerLink="/calendar" class="mt-4 inline-block font-semibold text-cyan-200"
+          >Volver al calendario</a
+        >
+      </div>
+    } @else if (!profileAvailable()) {
       <div class="rounded-2xl border border-amber-700 bg-amber-950/30 p-6 text-amber-100">
         <p>Configura tu perfil antes de crear entrenamientos.</p>
         <a routerLink="/profile" class="mt-4 inline-block font-semibold text-cyan-200"
@@ -35,6 +44,14 @@
             alertMessage="Por favor, completa el formulario"
             (showAlert)="closeSuccessAlert($event)"
           />
+          <div class="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-800" role="alert">
+            <p class="font-semibold">Revisa estos datos antes de guardar:</p>
+            <ul class="mt-2 list-disc pl-5 text-sm">
+              @for (error of errors(); track error) {
+                <li>{{ error }}</li>
+              }
+            </ul>
+          </div>
         }
 
         <section id="informacion general">
@@ -57,8 +74,8 @@
                 [simple]="true"
                 simpleClass="w-fit"
               />
-              <p class="text-lg text-slate-600">
-                {{ totals().durationMinutes }} min · {{ totals().distanceKm ?? 0 }} km
+              <p class="text-lg text-slate-600" data-testid="workout-totals">
+                {{ totalsLabel() }}
               </p>
             </div>
 
@@ -107,209 +124,28 @@
                 formControlName="plannedDistanceKm"
               />
             </label>
+            <label class="flex flex-col gap-2">
+              <span class="font-semibold">Duración estimada (min)</span>
+              <input
+                class="rounded-xl border border-slate-300 px-3 py-2"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="Calculada de los pasos"
+                formControlName="estimatedDurationMinutes"
+              />
+            </label>
           </div>
         </section>
 
         <section class="rounded-3xl bg-white p-5 text-slate-950 shadow-xl">
-          <div class="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 class="text-xl font-bold">Bloques del entrenamiento</h2>
-              <p class="text-sm text-slate-600">
-                {{ totals().blockCount }} bloques · {{ totals().durationMinutes }} min ·
-                {{ totals().distanceKm ?? 0 }} km
-              </p>
-            </div>
-            <button
-              type="button"
-              class="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
-              (click)="addBlock()"
-            >
-              Agregar bloque
-            </button>
-          </div>
-
-          <figure class="mb-5 rounded-2xl bg-slate-100 p-4" aria-labelledby="blocks-chart-title">
-            <figcaption id="blocks-chart-title" class="mb-3 font-semibold">
-              Distribución de bloques por duración
-            </figcaption>
-            @if (chartBlocks().length > 0) {
-              <div
-                class="flex h-20 w-full overflow-hidden rounded-xl bg-slate-200"
-                aria-hidden="true"
-              >
-                @for (block of chartBlocks(); track block.id) {
-                  <div
-                    class="flex min-w-0 items-center justify-center overflow-hidden px-2 text-center text-xs font-semibold text-white"
-                    [class]="block.colorClass"
-                    [style.width.%]="block.percentage"
-                    [title]="block.name + ': ' + block.durationMinutes + ' min'"
-                  >
-                    <span class="truncate">{{ block.name }} · {{ block.durationMinutes }} min</span>
-                  </div>
-                }
-              </div>
-              <ul class="sr-only">
-                @for (block of chartBlocks(); track block.id) {
-                  <li>
-                    {{ block.name }}, {{ block.typeLabel }}, {{ block.durationMinutes }} minutos
-                  </li>
-                }
-              </ul>
-            } @else {
-              <p class="text-sm text-slate-600">
-                Define la duración de los bloques para visualizar su distribución.
-              </p>
-            }
-          </figure>
-
-          <div formArrayName="blocks" class="space-y-4">
-            @for (block of blocks.controls; track block.controls.id.value; let index = $index) {
-              <fieldset class="rounded-2xl border border-slate-300 p-4" [formGroupName]="index">
-                <legend class="px-2 font-bold">Bloque {{ index + 1 }}</legend>
-                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <label class="flex flex-col gap-1 lg:col-span-2"
-                    ><span>Nombre *</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      formControlName="name"
-                      [attr.aria-invalid]="
-                        block.controls.name.touched && block.controls.name.invalid
-                      "
-                  /></label>
-                  <label class="flex flex-col gap-1"
-                    ><span>Fase</span
-                    ><select
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      formControlName="phase"
-                    >
-                      @for (option of phaseOptions; track option.value) {
-                        <option [value]="option.value">{{ option.label }}</option>
-                      }
-                    </select></label
-                  >
-                  <label class="flex flex-col gap-1"
-                    ><span>Objetivo principal</span
-                    ><select
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      formControlName="targetType"
-                    >
-                      @for (option of targetTypeOptions; track option.value) {
-                        <option [value]="option.value">{{ option.label }}</option>
-                      }
-                    </select></label
-                  >
-                  <label class="flex flex-col gap-1"
-                    ><span>{{
-                      block.controls.targetType.value === 'time'
-                        ? 'Duración (min) *'
-                        : 'Duración estimada (min)'
-                    }}</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      type="number"
-                      min="0"
-                      formControlName="durationMinutes"
-                      [attr.aria-invalid]="
-                        block.controls.durationMinutes.touched &&
-                        block.controls.durationMinutes.invalid
-                      "
-                  /></label>
-                  <label class="flex flex-col gap-1"
-                    ><span>Distancia (km)</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      type="number"
-                      min="0.1"
-                      step="0.1"
-                      formControlName="distanceKm"
-                  /></label>
-                  @if (isZoneMetric()) {
-                    <label class="flex flex-col gap-1"
-                      ><span>Zona de entrenamiento *</span
-                      ><select
-                        class="rounded-lg border border-slate-300 px-3 py-2"
-                        formControlName="trainingZoneId"
-                      >
-                        <option [ngValue]="null">Sin zona</option>
-                        @for (zone of zones(); track zone.id) {
-                          <option [value]="zone.id">{{ formatZone(zone) }}</option>
-                        }
-                      </select></label
-                    >
-                  }
-                  @if (isRpeMetric()) {
-                    <label class="flex flex-col gap-1"
-                      ><span>RPE objetivo *</span
-                      ><input
-                        class="rounded-lg border border-slate-300 px-3 py-2"
-                        type="number"
-                        min="1"
-                        max="10"
-                        formControlName="targetRpe"
-                    /></label>
-                  }
-                  @if (isCycling()) {
-                    <label class="flex flex-col gap-1"
-                      ><span>Cadencia mínima</span
-                      ><input
-                        class="rounded-lg border border-slate-300 px-3 py-2"
-                        type="number"
-                        min="1"
-                        formControlName="cadenceMin"
-                    /></label>
-                    <label class="flex flex-col gap-1"
-                      ><span>Cadencia máxima</span
-                      ><input
-                        class="rounded-lg border border-slate-300 px-3 py-2"
-                        type="number"
-                        min="1"
-                        formControlName="cadenceMax"
-                    /></label>
-                  }
-                  <label class="flex flex-col gap-1 sm:col-span-2"
-                    ><span>Instrucciones</span
-                    ><textarea
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      rows="2"
-                      formControlName="instructions"
-                    ></textarea>
-                  </label>
-                </div>
-                <div class="mt-4 flex flex-wrap justify-end gap-2">
-                  <button
-                    type="button"
-                    class="rounded-lg border px-3 py-2 disabled:opacity-40"
-                    [disabled]="index === 0"
-                    [attr.aria-label]="'Mover bloque ' + (index + 1) + ' hacia arriba'"
-                    (click)="moveBlock(index, -1)"
-                  >
-                    Subir
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-lg border px-3 py-2 disabled:opacity-40"
-                    [disabled]="index === blocks.length - 1"
-                    [attr.aria-label]="'Mover bloque ' + (index + 1) + ' hacia abajo'"
-                    (click)="moveBlock(index, 1)"
-                  >
-                    Bajar
-                  </button>
-                  <button
-                    type="button"
-                    class="rounded-lg border border-red-300 px-3 py-2 text-red-700"
-                    [attr.aria-label]="'Eliminar bloque ' + (index + 1)"
-                    (click)="removeBlock(index)"
-                  >
-                    Eliminar
-                  </button>
-                </div>
-              </fieldset>
-            } @empty {
-              <p class="rounded-xl bg-slate-100 p-4 text-slate-600">
-                Agrega al menos un bloque para planificar el entrenamiento.
-              </p>
-            }
-          </div>
+          <app-workout-step-editor
+            [(steps)]="steps"
+            [sport]="selectedSport()"
+            [primaryMetric]="selectedMetric()"
+            [zoneSet]="zoneSet()"
+            [showErrors]="hasTriedToSave()"
+          />
         </section>
 
         <section

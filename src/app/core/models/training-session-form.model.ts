@@ -1,39 +1,13 @@
 import type { TrainingZoneSetEntity } from '../domain/schemas/training-zone-set.schema';
+import type { WorkoutStep } from '../domain/schemas/workout-step.schema';
 import type {
   IntensityMetric,
   Sport,
   SportModality,
-  StepPhase,
   WorkoutCategory,
 } from '../domain/workout.enums';
 
-export const BlockTargetType = {
-  Time: 'time',
-  Distance: 'distance',
-} as const;
-
-export type BlockTargetType = (typeof BlockTargetType)[keyof typeof BlockTargetType];
-
-/**
- * A block of the current session form. Each block is saved as an interval step.
- * Values use UI units (minutes, km); the facade converts them to seconds and meters.
- */
-export interface WorkoutBlockFormValue {
-  id: string;
-  name: string;
-  phase: StepPhase;
-  targetType: BlockTargetType;
-  /** Required for time blocks; an optional estimate for distance blocks. */
-  durationMinutes: number | null;
-  distanceKm: number | null;
-  trainingZoneId: string | null;
-  targetRpe: number | null;
-  cadenceMin: number | null;
-  cadenceMax: number | null;
-  instructions: string;
-  sortOrder: number;
-}
-
+/** Session form value. Header values use UI units (minutes, km); steps use domain units. */
 export interface TrainingSessionFormValue {
   id?: string;
   title: string;
@@ -42,17 +16,21 @@ export interface TrainingSessionFormValue {
   modality: SportModality | null;
   category: WorkoutCategory | null;
   primaryMetric: IntensityMetric | null;
+  /** Optional override of the calculated duration, for distance or open steps. */
+  estimatedDurationMinutes: number | null;
   plannedDistanceKm: number | null;
   objective: string;
   description: string;
   notes: string;
-  blocks: WorkoutBlockFormValue[];
+  steps: WorkoutStep[];
 }
 
 export interface TrainingSessionTotals {
   durationMinutes: number;
   distanceKm: number | null;
-  blockCount: number;
+  stepCount: number;
+  /** True when the duration comes from the user estimate instead of the steps. */
+  isEstimated: boolean;
 }
 
 export interface TrainingSessionFormState {
