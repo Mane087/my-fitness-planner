@@ -109,8 +109,8 @@ describe('migrateIndexedDb (fake-indexeddb)', () => {
     installFakeIndexedDb();
   });
 
-  it('creates the v1 stores and indexes on a fresh database', async () => {
-    const database = await openDatabase(DATABASE_NAME, INDEXED_DB_VERSION, migrateIndexedDb);
+  it('creates the v1 stores and indexes when opening at version 1', async () => {
+    const database = await openDatabase(DATABASE_NAME, 1, migrateIndexedDb);
 
     for (const definition of V1_STORE_DEFINITIONS) {
       expect(database.objectStoreNames.contains(definition.name)).toBe(true);
@@ -121,7 +121,14 @@ describe('migrateIndexedDb (fake-indexeddb)', () => {
       }
     }
 
-    expect(database.objectStoreNames).toHaveLength(Object.values(IndexedDbStore).length);
+    expect(database.objectStoreNames).toHaveLength(V1_STORE_DEFINITIONS.length);
+    database.close();
+  });
+
+  it('creates exactly the current stores on a fresh database', async () => {
+    const database = await openDatabase(DATABASE_NAME, INDEXED_DB_VERSION, migrateIndexedDb);
+
+    expect([...database.objectStoreNames].sort()).toEqual(Object.values(IndexedDbStore).sort());
     database.close();
   });
 

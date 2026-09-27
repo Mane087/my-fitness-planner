@@ -1,19 +1,14 @@
 import { inject, Injectable } from '@angular/core';
+
+import {
+  scheduledWorkoutSchema,
+  type ScheduledWorkoutEntity,
+} from '../domain/schemas/scheduled-workout.schema';
+import { pickWorkoutDefinition } from '../domain/schemas/workout-definition.schema';
 import { WorkoutStatus } from '../domain/workout.enums';
-import type { ScheduledWorkoutEntity } from '../domain/scheduled-workout.model';
 import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
-import {
-  assertDateOnly,
-  assertValidBlocks,
-  cloneValue,
-  createId,
-  isWorkoutDiscipline,
-  isIntensityMetric,
-  isWorkoutStatus,
-  isWorkoutType,
-  nowIso,
-} from './repository-utils';
+import { assertDateOnly, cloneValue, createId, nowIso, parseEntity } from './repository-utils';
 
 @Injectable({ providedIn: 'root' })
 export class ScheduledWorkoutRepository {
@@ -44,23 +39,25 @@ export class ScheduledWorkoutRepository {
     return this.indexedDb.getById(IndexedDbStore.ScheduledWorkouts, id);
   }
 
-  create(workout: ScheduledWorkoutEntity): Promise<ScheduledWorkoutEntity> {
+  async create(workout: ScheduledWorkoutEntity): Promise<ScheduledWorkoutEntity> {
     const timestamp = nowIso();
-    const nextWorkout = {
+    const nextWorkout = parseEntity(scheduledWorkoutSchema, 'Scheduled workout', {
       ...workout,
       id: workout.id || createId(),
-      blocks: workout.blocks ?? [],
       status: workout.status ?? WorkoutStatus.Planned,
       createdAt: workout.createdAt || timestamp,
       updatedAt: timestamp,
-    };
-    this.validate(nextWorkout);
+    });
+
     return this.indexedDb.add(IndexedDbStore.ScheduledWorkouts, nextWorkout);
   }
 
-  update(workout: ScheduledWorkoutEntity): Promise<ScheduledWorkoutEntity> {
-    const nextWorkout = { ...workout, blocks: workout.blocks ?? [], updatedAt: nowIso() };
-    this.validate(nextWorkout);
+  async update(workout: ScheduledWorkoutEntity): Promise<ScheduledWorkoutEntity> {
+    const nextWorkout = parseEntity(scheduledWorkoutSchema, 'Scheduled workout', {
+      ...workout,
+      updatedAt: nowIso(),
+    });
+
     return this.indexedDb.put(IndexedDbStore.ScheduledWorkouts, nextWorkout);
   }
 
@@ -72,10 +69,14 @@ export class ScheduledWorkoutRepository {
       throw new Error('Scheduled workout was not found.');
     }
 
-    const movedWorkout = { ...workout, scheduledDate, updatedAt: nowIso() };
-    return this.indexedDb.put(IndexedDbStore.ScheduledWorkouts, movedWorkout);
+    return this.indexedDb.put(IndexedDbStore.ScheduledWorkouts, {
+      ...workout,
+      scheduledDate,
+      updatedAt: nowIso(),
+    });
   }
 
+  /** Copies the planned definition to another date. The copy starts as planned, without completion. */
   async copy(id: string, scheduledDate: string): Promise<ScheduledWorkoutEntity> {
     assertDateOnly(scheduledDate);
     const workout = await this.findById(id);
@@ -86,9 +87,11 @@ export class ScheduledWorkoutRepository {
 
     const timestamp = nowIso();
     const copiedWorkout: ScheduledWorkoutEntity = {
-      ...cloneValue(workout),
+      ...pickWorkoutDefinition(cloneValue(workout)),
       id: createId(),
       scheduledDate,
+      status: WorkoutStatus.Planned,
+      ...(workout.sourceTemplateId ? { sourceTemplateId: workout.sourceTemplateId } : {}),
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -98,39 +101,5 @@ export class ScheduledWorkoutRepository {
 
   delete(id: string): Promise<void> {
     return this.indexedDb.delete(IndexedDbStore.ScheduledWorkouts, id);
-  }
-
-  private validate(workout: ScheduledWorkoutEntity): void {
-    if (!workout.title.trim()) {
-      throw new Error('Scheduled workout title is required.');
-    }
-
-    assertDateOnly(workout.scheduledDate);
-
-    if (workout.estimatedDurationMinutes <= 0) {
-      throw new Error('Scheduled workout duration must be greater than 0.');
-    }
-
-    if (!isWorkoutType(workout.workoutType)) {
-      throw new Error('Scheduled workout type is invalid.');
-    }
-
-    if (!isWorkoutDiscipline(workout.discipline)) {
-      throw new Error('Scheduled workout discipline is invalid.');
-    }
-
-    if (!isIntensityMetric(workout.intensityMetric)) {
-      throw new Error('Scheduled workout intensity metric is invalid.');
-    }
-
-    if (workout.blocks.length === 0) {
-      throw new Error('Scheduled workout requires at least one block.');
-    }
-
-    if (!isWorkoutStatus(workout.status)) {
-      throw new Error('Scheduled workout status is invalid.');
-    }
-
-    assertValidBlocks(workout.blocks);
   }
 }

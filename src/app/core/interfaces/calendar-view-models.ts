@@ -1,12 +1,13 @@
-import type { WorkoutStatus, WorkoutType } from '../domain/workout.enums';
+import type { Sport, WorkoutCategory, WorkoutStatus } from '../domain/workout.enums';
 
 export interface CalendarWorkoutCardViewModel {
   id: string;
   title: string;
   scheduledDate: string;
-  disciplineLabel: string;
-  workoutType: WorkoutType;
-  workoutTypeLabel: string;
+  sport: Sport;
+  sportLabel: string;
+  category: WorkoutCategory;
+  categoryLabel: string;
   durationLabel: string;
   distanceLabel: string;
   colorClass: string;

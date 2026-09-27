@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '../../components/button/button.component';
-import { SportProfileRepository } from '../../core/repositories/sport-profile.repository';
+import { AthleteProfileRepository } from '../../core/repositories/athlete-profile.repository';
 
 @Component({
   selector: 'app-home',
@@ -13,10 +13,10 @@ import { SportProfileRepository } from '../../core/repositories/sport-profile.re
 })
 export class HomePageComponent {
   private readonly router = inject(Router);
-  private readonly sportProfileRepository = inject(SportProfileRepository);
+  private readonly athleteProfileRepository = inject(AthleteProfileRepository);
 
   async onNavigateToCalendar(): Promise<void> {
-    const profile = await this.sportProfileRepository.getActiveProfile();
+    const profile = await this.athleteProfileRepository.getActiveProfile();
     await this.router.navigateByUrl(profile ? '/calendar' : '/profile');
   }
 }

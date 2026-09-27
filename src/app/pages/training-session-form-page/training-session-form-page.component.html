@@ -50,10 +50,10 @@
                 />
               </div>
               <app-select
-                [options]="disciplineOptions"
-                formControlName="discipline"
+                [options]="sportOptions"
+                formControlName="sport"
                 label=""
-                titleSelect="Disciplina"
+                titleSelect="Deporte"
                 [simple]="true"
                 simpleClass="w-fit"
               />
@@ -62,13 +62,26 @@
               </p>
             </div>
 
+            @if (modalityOptions().length > 0) {
+              <label class="flex flex-col gap-2">
+                <span class="font-semibold">Modalidad</span>
+                <select
+                  class="rounded-xl border border-slate-300 px-3 py-2"
+                  formControlName="modality"
+                >
+                  @for (option of modalityOptions(); track option.value) {
+                    <option [value]="option.value">{{ option.label }}</option>
+                  }
+                </select>
+              </label>
+            }
             <label class="flex flex-col gap-2">
-              <span class="font-semibold">Tipo de entrenamiento</span>
+              <span class="font-semibold">Categoría *</span>
               <select
                 class="rounded-xl border border-slate-300 px-3 py-2"
-                formControlName="workoutType"
+                formControlName="category"
               >
-                @for (option of workoutTypeOptions; track option.value) {
+                @for (option of categoryOptions(); track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
@@ -77,25 +90,15 @@
               <span class="font-semibold">Métrica de intensidad *</span>
               <select
                 class="rounded-xl border border-slate-300 px-3 py-2"
-                formControlName="intensityMetric"
+                formControlName="primaryMetric"
               >
-                @for (option of intensityOptions; track option.value) {
+                @for (option of metricOptions(); track option.value) {
                   <option [value]="option.value">{{ option.label }}</option>
                 }
               </select>
             </label>
             <label class="flex flex-col gap-2">
               <span class="font-semibold">Distancia planificada (km)</span>
-              <input
-                class="rounded-xl border border-slate-300 px-3 py-2"
-                type="number"
-                min="0.1"
-                step="0.1"
-                formControlName="plannedDistanceKm"
-              />
-            </label>
-            <label class="flex flex-col gap-2">
-              <span class="font-semibold">Tiempo planificado (hh:mm)</span>
               <input
                 class="rounded-xl border border-slate-300 px-3 py-2"
                 type="number"
@@ -174,12 +177,12 @@
                       "
                   /></label>
                   <label class="flex flex-col gap-1"
-                    ><span>Tipo</span
+                    ><span>Fase</span
                     ><select
                       class="rounded-lg border border-slate-300 px-3 py-2"
-                      formControlName="blockType"
+                      formControlName="phase"
                     >
-                      @for (option of blockTypeOptions; track option.value) {
+                      @for (option of phaseOptions; track option.value) {
                         <option [value]="option.value">{{ option.label }}</option>
                       }
                     </select></label
@@ -196,11 +199,15 @@
                     </select></label
                   >
                   <label class="flex flex-col gap-1"
-                    ><span>Duración (min) *</span
+                    ><span>{{
+                      block.controls.targetType.value === 'time'
+                        ? 'Duración (min) *'
+                        : 'Duración estimada (min)'
+                    }}</span
                     ><input
                       class="rounded-lg border border-slate-300 px-3 py-2"
                       type="number"
-                      min="0.1"
+                      min="0"
                       formControlName="durationMinutes"
                       [attr.aria-invalid]="
                         block.controls.durationMinutes.touched &&
@@ -216,45 +223,49 @@
                       step="0.1"
                       formControlName="distanceKm"
                   /></label>
-                  <label class="flex flex-col gap-1"
-                    ><span>Zona de entrenamiento</span
-                    ><select
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      formControlName="trainingZoneId"
+                  @if (isZoneMetric()) {
+                    <label class="flex flex-col gap-1"
+                      ><span>Zona de entrenamiento *</span
+                      ><select
+                        class="rounded-lg border border-slate-300 px-3 py-2"
+                        formControlName="trainingZoneId"
+                      >
+                        <option [ngValue]="null">Sin zona</option>
+                        @for (zone of zones(); track zone.id) {
+                          <option [value]="zone.id">{{ formatZone(zone) }}</option>
+                        }
+                      </select></label
                     >
-                      <option [ngValue]="null">Sin zona</option>
-                      @for (zone of zones(); track zone.id) {
-                        <option [value]="zone.id">
-                          {{ zone.name }} ({{ zone.minHeartRate }}-{{ zone.maxHeartRate }} ppm)
-                        </option>
-                      }
-                    </select></label
-                  >
-                  <label class="flex flex-col gap-1"
-                    ><span>RPE objetivo</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      type="number"
-                      min="1"
-                      max="10"
-                      formControlName="targetRpe"
-                  /></label>
-                  <label class="flex flex-col gap-1"
-                    ><span>Cadencia mínima</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      type="number"
-                      min="1"
-                      formControlName="cadenceMin"
-                  /></label>
-                  <label class="flex flex-col gap-1"
-                    ><span>Cadencia máxima</span
-                    ><input
-                      class="rounded-lg border border-slate-300 px-3 py-2"
-                      type="number"
-                      min="1"
-                      formControlName="cadenceMax"
-                  /></label>
+                  }
+                  @if (isRpeMetric()) {
+                    <label class="flex flex-col gap-1"
+                      ><span>RPE objetivo *</span
+                      ><input
+                        class="rounded-lg border border-slate-300 px-3 py-2"
+                        type="number"
+                        min="1"
+                        max="10"
+                        formControlName="targetRpe"
+                    /></label>
+                  }
+                  @if (isCycling()) {
+                    <label class="flex flex-col gap-1"
+                      ><span>Cadencia mínima</span
+                      ><input
+                        class="rounded-lg border border-slate-300 px-3 py-2"
+                        type="number"
+                        min="1"
+                        formControlName="cadenceMin"
+                    /></label>
+                    <label class="flex flex-col gap-1"
+                      ><span>Cadencia máxima</span
+                      ><input
+                        class="rounded-lg border border-slate-300 px-3 py-2"
+                        type="number"
+                        min="1"
+                        formControlName="cadenceMax"
+                    /></label>
+                  }
                   <label class="flex flex-col gap-1 sm:col-span-2"
                     ><span>Instrucciones</span
                     ><textarea

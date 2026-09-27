@@ -1,35 +1,30 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 
-import type { AppSettingsEntity } from '../../src/app/core/domain/app-settings.model';
-import { CalendarDefaultView, TimeFormat } from '../../src/app/core/domain/app-settings.model';
-import type { ScheduledWorkoutEntity } from '../../src/app/core/domain/scheduled-workout.model';
 import {
-  PreferredDiscipline,
-  PreferredIntensityMetric,
+  CalendarDefaultView,
+  TimeFormat,
   WeekStartsOn,
-} from '../../src/app/core/domain/sport-profile.model';
-import type { SportProfileEntity } from '../../src/app/core/domain/sport-profile.model';
-import {
-  IntensityMetric,
-  WorkoutDiscipline,
-  WorkoutStatus,
-  WorkoutType,
-} from '../../src/app/core/domain/workout.enums';
+} from '../../src/app/core/domain/calendar.enums';
+import type { AppSettingsEntity } from '../../src/app/core/domain/schemas/app-settings.schema';
+import type { AthleteProfileEntity } from '../../src/app/core/domain/schemas/athlete-profile.schema';
+import type { ScheduledWorkoutEntity } from '../../src/app/core/domain/schemas/scheduled-workout.schema';
+import { IntensityMetric, Sport, WorkoutCategory } from '../../src/app/core/domain/workout.enums';
 import { AppSettingsRepository } from '../../src/app/core/repositories/app-settings.repository';
+import { AthleteProfileRepository } from '../../src/app/core/repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../../src/app/core/repositories/scheduled-workout.repository';
-import { SportProfileRepository } from '../../src/app/core/repositories/sport-profile.repository';
 import { CalendarFacade } from '../../src/app/core/services/calendar-facade.service';
+import { scheduledWorkout } from '../domain/fixtures';
 
 describe('CalendarFacade', () => {
   let facade: CalendarFacade;
   let scheduledWorkoutRepository: jest.Mocked<Pick<ScheduledWorkoutRepository, 'findByDateRange'>>;
-  let sportProfileRepository: jest.Mocked<Pick<SportProfileRepository, 'getActiveProfile'>>;
+  let athleteProfileRepository: jest.Mocked<Pick<AthleteProfileRepository, 'getActiveProfile'>>;
   let appSettingsRepository: jest.Mocked<Pick<AppSettingsRepository, 'getSettings'>>;
 
   beforeEach(() => {
     scheduledWorkoutRepository = { findByDateRange: jest.fn() };
-    sportProfileRepository = { getActiveProfile: jest.fn() };
+    athleteProfileRepository = { getActiveProfile: jest.fn() };
     appSettingsRepository = { getSettings: jest.fn() };
 
     TestBed.configureTestingModule({
@@ -37,7 +32,7 @@ describe('CalendarFacade', () => {
         CalendarFacade,
         provideRouter([]),
         { provide: ScheduledWorkoutRepository, useValue: scheduledWorkoutRepository },
-        { provide: SportProfileRepository, useValue: sportProfileRepository },
+        { provide: AthleteProfileRepository, useValue: athleteProfileRepository },
         { provide: AppSettingsRepository, useValue: appSettingsRepository },
       ],
     });
@@ -46,21 +41,25 @@ describe('CalendarFacade', () => {
   });
 
   it('carga entrenamientos del rango visible y calcula resumen mensual', async () => {
-    sportProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
     appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
     scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
-      buildWorkout({ id: 'april', scheduledDate: '2026-04-30', estimatedDurationMinutes: 90 }),
+      buildWorkout({
+        id: 'april',
+        scheduledDate: '2026-04-30',
+        plannedDurationSeconds: 90 * 60,
+      }),
       buildWorkout({
         id: 'may-a',
         scheduledDate: '2026-05-01',
-        estimatedDurationMinutes: 60,
-        plannedDistanceKm: 20,
+        plannedDurationSeconds: 60 * 60,
+        plannedDistanceMeters: 20_000,
       }),
       buildWorkout({
         id: 'may-b',
         scheduledDate: '2026-05-02',
-        estimatedDurationMinutes: 70,
-        plannedDistanceKm: 30,
+        plannedDurationSeconds: 70 * 60,
+        plannedDistanceMeters: 30_000,
       }),
     ]);
 
@@ -77,13 +76,15 @@ describe('CalendarFacade', () => {
     expect(viewModel.summary.totalDistanceKm).toBe(50);
     expect(viewModel.summary.totalDistanceLabel).toBe('50 km');
     expect(viewModel.summary.totalWorkouts).toBe(2);
-    expect(viewModel.weeks.flat().find((day) => day.date === '2026-05-01')?.workouts[0].title).toBe(
-      'Entrenamiento',
-    );
+
+    const mayFirst = viewModel.weeks.flat().find((day) => day.date === '2026-05-01');
+    expect(mayFirst?.workouts[0].title).toBe('Entrenamiento');
+    expect(mayFirst?.workouts[0].durationLabel).toBe('1 h');
+    expect(mayFirst?.workouts[0].distanceLabel).toBe('20 km');
   });
 
   it('usa usuario e inicio de semana por defecto sin perfil', async () => {
-    sportProfileRepository.getActiveProfile.mockResolvedValue(null);
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(null);
     appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
     scheduledWorkoutRepository.findByDateRange.mockResolvedValue([]);
 
@@ -95,7 +96,7 @@ describe('CalendarFacade', () => {
   });
 
   it('navega al mes anterior y siguiente', async () => {
-    sportProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
     appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
     scheduledWorkoutRepository.findByDateRange.mockResolvedValue([]);
 
@@ -126,21 +127,23 @@ describe('CalendarFacade', () => {
     expect(router.navigate).toHaveBeenCalledWith(['/calendar', 'edit', 'workout-123']);
   });
 
-  it('mapea etiquetas de disciplina y tipo a español', async () => {
-    sportProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+  it('mapea etiquetas de deporte y categoría a español', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
     appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
     scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
       buildWorkout({
         id: 'w1',
         scheduledDate: '2026-05-01',
-        discipline: WorkoutDiscipline.Mtb,
-        workoutType: WorkoutType.Recovery,
+        sport: Sport.Cycling,
+        modality: 'mtb',
+        category: WorkoutCategory.Recovery,
       }),
       buildWorkout({
         id: 'w2',
         scheduledDate: '2026-05-02',
-        discipline: WorkoutDiscipline.Road,
-        workoutType: WorkoutType.Vo2Max,
+        sport: Sport.Cycling,
+        modality: 'road',
+        category: WorkoutCategory.Vo2Max,
       }),
     ]);
 
@@ -148,20 +151,20 @@ describe('CalendarFacade', () => {
     const may1 = viewModel.weeks.flat().find((day) => day.date === '2026-05-01');
     const may2 = viewModel.weeks.flat().find((day) => day.date === '2026-05-02');
 
-    expect(may1?.workouts[0].disciplineLabel).toBe('MTB');
-    expect(may1?.workouts[0].workoutTypeLabel).toBe('Recuperación');
-    expect(may2?.workouts[0].disciplineLabel).toBe('Ruta');
-    expect(may2?.workouts[0].workoutTypeLabel).toBe('VO2 Máx');
+    expect(may1?.workouts[0].sportLabel).toBe('Ciclismo MTB');
+    expect(may1?.workouts[0].categoryLabel).toBe('Recuperación');
+    expect(may2?.workouts[0].sportLabel).toBe('Ciclismo Ruta');
+    expect(may2?.workouts[0].categoryLabel).toBe('VO2 máx');
   });
 });
 
-function buildProfile(): SportProfileEntity {
+function buildProfile(): AthleteProfileEntity {
   return {
     id: 'profile-1',
     name: 'Manuel',
     maxHeartRate: 190,
-    preferredDiscipline: PreferredDiscipline.Road,
-    preferredIntensityMetric: PreferredIntensityMetric.HeartRate,
+    preferredSport: Sport.Cycling,
+    preferredIntensityMetric: IntensityMetric.HeartRate,
     weekStartsOn: WeekStartsOn.Monday,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
@@ -180,18 +183,17 @@ function buildSettings(): AppSettingsEntity {
 }
 
 function buildWorkout(overrides: Partial<ScheduledWorkoutEntity> = {}): ScheduledWorkoutEntity {
-  return {
+  return scheduledWorkout({
     id: 'workout-1',
     title: 'Entrenamiento',
     scheduledDate: '2026-05-01',
-    workoutType: WorkoutType.Base,
-    discipline: WorkoutDiscipline.Road,
-    intensityMetric: IntensityMetric.HeartRate,
-    estimatedDurationMinutes: 60,
-    status: WorkoutStatus.Planned,
-    blocks: [],
+    sport: Sport.Cycling,
+    modality: 'road',
+    category: WorkoutCategory.Endurance,
+    primaryMetric: IntensityMetric.HeartRate,
+    plannedDurationSeconds: 60 * 60,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
-  };
+  });
 }

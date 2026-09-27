@@ -59,7 +59,13 @@
             />
 
             <app-select
-              [options]="intesityMetricOptions"
+              [options]="sportOptions"
+              formControlName="preferredSport"
+              label="Deporte principal"
+              titleSelect="Deporte principal"
+            />
+            <app-select
+              [options]="intensityMetricOptions"
               formControlName="preferredIntensityMetric"
               label="Métrica de entrenamiento"
               titleSelect="Métrica de entrenamiento"
@@ -76,6 +82,12 @@
               icon="/icons/plus.svg"
               title="Agregar zona"
               (pressed)="addZone()"
+            />
+            <app-action-button
+              label="Recalcular desde FC máxima"
+              icon="/icons/plus.svg"
+              title="Recalcular zonas desde la FC máxima"
+              (pressed)="resetZonesToDefault()"
             />
           </div>
 

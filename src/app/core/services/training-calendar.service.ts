@@ -1,5 +1,5 @@
 import { inject, Injectable } from '@angular/core';
-import type { ScheduledWorkoutEntity } from '../domain/scheduled-workout.model';
+import type { ScheduledWorkoutEntity } from '../domain/schemas/scheduled-workout.schema';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 
 @Injectable({ providedIn: 'root' })

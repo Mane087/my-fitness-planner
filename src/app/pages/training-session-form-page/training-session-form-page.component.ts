@@ -1,7 +1,14 @@
 // ANGULAR IMPORTS
 import { DOCUMENT } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
   FormArray,
@@ -16,23 +23,37 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 
 // IMPORT TYPES
 import type {
-  TrainingZoneEntity,
-  TrainingZoneSnapshot,
-} from '../../core/domain/training-zone.model';
-import { WorkoutBlockTargetType, WorkoutBlockType } from '../../core/domain/workout-block.model';
-import type {
-  TrainingSessionFormValue,
-  TrainingSessionTotals,
-  WorkoutBlockFormValue,
+  TrainingZone,
+  TrainingZoneSetEntity,
+} from '../../core/domain/schemas/training-zone-set.schema';
+import {
+  INTENSITY_METRICS,
+  IntensityMetric,
+  SPORT_MODALITIES,
+  SPORTS,
+  Sport,
+  STEP_PHASES,
+  StepPhase,
+  supportsZoneMetric,
+  WORKOUT_CATEGORIES_BY_SPORT,
+  type SportModality,
+  type WorkoutCategory,
+} from '../../core/domain/workout.enums';
+import {
+  BlockTargetType,
+  type TrainingSessionFormValue,
+  type TrainingSessionTotals,
+  type WorkoutBlockFormValue,
 } from '../../core/interfaces/training-session-form.model';
 import {
-  IntensityMetric,
-  WorkoutDiscipline,
-  WorkoutType,
-  type IntensityMetric as IntensityMetricType,
-  type WorkoutDiscipline as WorkoutDisciplineType,
-  type WorkoutType as WorkoutTypeValue,
-} from '../../core/domain/workout.enums';
+  INTENSITY_METRIC_LABELS,
+  SPORT_LABELS,
+  SPORT_MODALITY_LABELS,
+  STEP_DURATION_TYPE_LABELS,
+  STEP_PHASE_LABELS,
+  WORKOUT_CATEGORY_LABELS,
+} from '../../core/models/workout-labels';
+import type { Options } from '../../core/types/option';
 
 // IMPORT UTILS
 import { createId } from '../../core/repositories/repository-utils';
@@ -48,12 +69,11 @@ import { SelectComponent } from '../../components/select/select.component';
 interface BlockFormControls {
   id: FormControl<string>;
   name: FormControl<string>;
-  blockType: FormControl<WorkoutBlockType>;
+  phase: FormControl<StepPhase>;
+  targetType: FormControl<BlockTargetType>;
   durationMinutes: FormControl<number | null>;
   distanceKm: FormControl<number | null>;
-  targetType: FormControl<WorkoutBlockTargetType>;
   trainingZoneId: FormControl<string | null>;
-  trainingZoneSnapshot: FormControl<TrainingZoneSnapshot | null>;
   targetRpe: FormControl<number | null>;
   cadenceMin: FormControl<number | null>;
   cadenceMax: FormControl<number | null>;
@@ -72,12 +92,23 @@ interface ChartBlock {
   colorClass: string;
 }
 
-const BLOCK_CHART_COLORS: Record<WorkoutBlockType, string> = {
-  [WorkoutBlockType.WarmUp]: 'bg-amber-400',
-  [WorkoutBlockType.Active]: 'bg-blue-600',
-  [WorkoutBlockType.Recovery]: 'bg-emerald-500',
-  [WorkoutBlockType.CoolDown]: 'bg-violet-500',
-  [WorkoutBlockType.Free]: 'bg-slate-500',
+const BLOCK_CHART_COLORS: Record<StepPhase, string> = {
+  [StepPhase.WarmUp]: 'bg-amber-400',
+  [StepPhase.Active]: 'bg-blue-600',
+  [StepPhase.Recovery]: 'bg-emerald-500',
+  [StepPhase.Rest]: 'bg-slate-500',
+  [StepPhase.CoolDown]: 'bg-violet-500',
+};
+
+const SPORT_ICONS: Partial<Record<Sport, string>> = {
+  [Sport.Cycling]: '/icons/road.svg',
+};
+
+const ZONE_UNITS: Record<IntensityMetric, string> = {
+  [IntensityMetric.HeartRate]: 'ppm',
+  [IntensityMetric.Power]: 'W',
+  [IntensityMetric.Pace]: '/km',
+  [IntensityMetric.Rpe]: '',
 };
 
 @Component({
@@ -92,12 +123,13 @@ export class TrainingSessionFormPageComponent {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly document = inject(DOCUMENT);
+  private readonly destroyRef = inject(DestroyRef);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly mode = signal<'create' | 'edit'>('create');
   readonly profileAvailable = signal(false);
-  readonly zones = signal<TrainingZoneEntity[]>([]);
+  readonly zoneSets = signal<TrainingZoneSetEntity[]>([]);
   readonly errors = signal<string[]>([]);
   readonly loadError = signal<string | null>(null);
 
@@ -107,12 +139,10 @@ export class TrainingSessionFormPageComponent {
       Validators.maxLength(120),
     ]),
     scheduledDate: this.formBuilder.nonNullable.control('', Validators.required),
-    discipline: this.formBuilder.control<WorkoutDisciplineType | null>(null, Validators.required),
-    workoutType: this.formBuilder.control<WorkoutTypeValue | null>(null, Validators.required),
-    intensityMetric: this.formBuilder.control<IntensityMetricType | null>(
-      null,
-      Validators.required,
-    ),
+    sport: this.formBuilder.control<Sport | null>(null, Validators.required),
+    modality: this.formBuilder.control<SportModality | null>(null),
+    category: this.formBuilder.control<WorkoutCategory | null>(null, Validators.required),
+    primaryMetric: this.formBuilder.control<IntensityMetric | null>(null, Validators.required),
     plannedDistanceKm: this.formBuilder.control<number | null>(null, Validators.min(0.1)),
     objective: this.formBuilder.nonNullable.control('', Validators.maxLength(250)),
     description: this.formBuilder.nonNullable.control('', Validators.maxLength(1000)),
@@ -123,6 +153,65 @@ export class TrainingSessionFormPageComponent {
   private readonly formChanges = toSignal(this.form.valueChanges, {
     initialValue: this.form.getRawValue(),
   });
+  private readonly selectedSport = computed(() => {
+    this.formChanges();
+    return this.form.controls.sport.value;
+  });
+  private readonly selectedMetric = computed(() => {
+    this.formChanges();
+    return this.form.controls.primaryMetric.value;
+  });
+
+  readonly zones = computed<TrainingZone[]>(() =>
+    this.facade.zonesFor(this.zoneSets(), this.selectedSport(), this.selectedMetric()),
+  );
+  readonly isZoneMetric = computed(() => {
+    const sport = this.selectedSport();
+    const metric = this.selectedMetric();
+    return sport !== null && metric !== null && supportsZoneMetric(sport, metric);
+  });
+  readonly isRpeMetric = computed(() => this.selectedMetric() === IntensityMetric.Rpe);
+  readonly isCycling = computed(() => this.selectedSport() === Sport.Cycling);
+
+  readonly sportOptions: Options[] = SPORTS.map((sport) => ({
+    value: sport,
+    label: SPORT_LABELS[sport],
+    ...(SPORT_ICONS[sport] ? { icon: SPORT_ICONS[sport] } : {}),
+  }));
+  readonly modalityOptions = computed(() => {
+    const sport = this.selectedSport();
+    return sport
+      ? SPORT_MODALITIES[sport].map((modality) => ({
+          value: modality,
+          label: SPORT_MODALITY_LABELS[modality],
+        }))
+      : [];
+  });
+  readonly categoryOptions = computed(() => {
+    const sport = this.selectedSport();
+    return sport
+      ? WORKOUT_CATEGORIES_BY_SPORT[sport].map((category) => ({
+          value: category,
+          label: WORKOUT_CATEGORY_LABELS[category],
+        }))
+      : [];
+  });
+  readonly metricOptions = computed(() => {
+    const sport = this.selectedSport();
+    return INTENSITY_METRICS.filter(
+      (metric) =>
+        metric === IntensityMetric.Rpe || (sport !== null && supportsZoneMetric(sport, metric)),
+    ).map((metric) => ({ value: metric, label: INTENSITY_METRIC_LABELS[metric] }));
+  });
+  readonly phaseOptions = STEP_PHASES.map((phase) => ({
+    value: phase,
+    label: STEP_PHASE_LABELS[phase],
+  }));
+  readonly targetTypeOptions = [
+    { value: BlockTargetType.Time, label: STEP_DURATION_TYPE_LABELS.time },
+    { value: BlockTargetType.Distance, label: STEP_DURATION_TYPE_LABELS.distance },
+  ] as const;
+
   readonly totals = computed(() => {
     this.formChanges();
     const blockTotals = this.facade.calculateTotals(this.blocks.getRawValue());
@@ -149,9 +238,8 @@ export class TrainingSessionFormPageComponent {
       name: block.name,
       durationMinutes: block.durationMinutes,
       percentage: (block.durationMinutes / totalDuration) * 100,
-      typeLabel:
-        this.blockTypeOptions.find((option) => option.value === block.blockType)?.label ?? 'Bloque',
-      colorClass: BLOCK_CHART_COLORS[block.blockType],
+      typeLabel: STEP_PHASE_LABELS[block.phase] ?? 'Bloque',
+      colorClass: BLOCK_CHART_COLORS[block.phase],
     }));
   });
   readonly selectedDateLabel = computed(() => {
@@ -159,48 +247,27 @@ export class TrainingSessionFormPageComponent {
     return this.formatDate(this.form.controls.scheduledDate.value);
   });
 
-  disciplineOptions = [
-    { value: WorkoutDiscipline.Road, label: 'Ruta', icon: '/icons/road.svg' },
-    { value: WorkoutDiscipline.Mtb, label: 'MTB', icon: '/icons/mountain.svg' },
-    { value: WorkoutDiscipline.Indoor, label: 'Indoor', icon: '/icons/indoor.svg' },
-  ];
-  readonly workoutTypeOptions = [
-    { value: WorkoutType.Recovery, label: 'Recuperación' },
-    { value: WorkoutType.Base, label: 'Base' },
-    { value: WorkoutType.Endurance, label: 'Resistencia' },
-    { value: WorkoutType.Climbing, label: 'Subidas' },
-    { value: WorkoutType.Tempo, label: 'Tempo' },
-    { value: WorkoutType.Threshold, label: 'Umbral' },
-    { value: WorkoutType.Vo2Max, label: 'VO2 máx.' },
-    { value: WorkoutType.Technique, label: 'Técnica' },
-    { value: WorkoutType.Free, label: 'Libre' },
-  ] as const;
-  readonly intensityOptions = [
-    { value: IntensityMetric.HeartRate, label: 'Frecuencia cardíaca' },
-    { value: IntensityMetric.Rpe, label: 'RPE' },
-    { value: IntensityMetric.Mixed, label: 'Mixta' },
-  ] as const;
-  readonly blockTypeOptions = [
-    { value: WorkoutBlockType.WarmUp, label: 'Calentamiento' },
-    { value: WorkoutBlockType.Active, label: 'Trabajo principal' },
-    { value: WorkoutBlockType.Recovery, label: 'Recuperación' },
-    { value: WorkoutBlockType.CoolDown, label: 'Vuelta a la calma' },
-    { value: WorkoutBlockType.Free, label: 'Bloque libre' },
-  ] as const;
-  readonly targetTypeOptions = [
-    { value: WorkoutBlockTargetType.Time, label: 'Tiempo' },
-    { value: WorkoutBlockTargetType.Distance, label: 'Distancia' },
-  ] as const;
   typeAlert = signal<AlertType>('toast-success');
   showSuccessAlert = signal(false);
   readonly alertMessage = signal('');
 
   constructor() {
+    this.form.controls.sport.valueChanges
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((sport) => this.alignWithSport(sport));
     void this.load();
   }
 
   get blocks(): FormArray<BlockFormGroup> {
     return this.form.controls.blocks;
+  }
+
+  formatZone(zone: TrainingZone): string {
+    const metric = this.selectedMetric() ?? IntensityMetric.HeartRate;
+    const format = (value: number) =>
+      metric === IntensityMetric.Pace ? formatPace(value) : String(value);
+
+    return `${zone.name} (${format(zone.minValue)}-${format(zone.maxValue)} ${ZONE_UNITS[metric]})`;
   }
 
   closeSuccessAlert(value: boolean): void {
@@ -230,7 +297,7 @@ export class TrainingSessionFormPageComponent {
   async save(): Promise<void> {
     this.form.markAllAsTouched();
     const value = this.toFormValue();
-    const errors = this.facade.validate(value, this.zones());
+    const errors = this.facade.validate(value, this.zoneSets());
     this.errors.set(errors);
 
     if (this.form.invalid || errors.length > 0 || !this.profileAvailable()) {
@@ -240,7 +307,7 @@ export class TrainingSessionFormPageComponent {
 
     this.saving.set(true);
     try {
-      const workout = await this.facade.save(value, this.zones());
+      const workout = await this.facade.save(value, this.zoneSets());
       this.form.markAsPristine();
       await this.router.navigate(['/calendar'], {
         queryParams: {
@@ -278,7 +345,7 @@ export class TrainingSessionFormPageComponent {
         : await this.facade.loadCreateForm(date);
       this.mode.set(state.mode);
       this.profileAvailable.set(state.profileAvailable);
-      this.zones.set(state.zones);
+      this.zoneSets.set(state.zoneSets);
       this.patchForm(state.formValue);
     } catch (error) {
       this.loadError.set(
@@ -289,18 +356,49 @@ export class TrainingSessionFormPageComponent {
     }
   }
 
+  /** Clears modality, category and metric when they do not apply to the new sport. */
+  private alignWithSport(sport: Sport | null): void {
+    const { modality, category, primaryMetric } = this.form.controls;
+
+    if (!sport) return;
+
+    if (modality.value && !SPORT_MODALITIES[sport].includes(modality.value)) {
+      modality.setValue(SPORT_MODALITIES[sport][0] ?? null);
+    }
+    if (!modality.value && SPORT_MODALITIES[sport].length > 0) {
+      modality.setValue(SPORT_MODALITIES[sport][0] ?? null);
+    }
+    if (SPORT_MODALITIES[sport].length === 0) {
+      modality.setValue(null);
+    }
+    if (category.value && !WORKOUT_CATEGORIES_BY_SPORT[sport].includes(category.value)) {
+      category.setValue(WORKOUT_CATEGORIES_BY_SPORT[sport][0] ?? null);
+    }
+    if (
+      primaryMetric.value &&
+      primaryMetric.value !== IntensityMetric.Rpe &&
+      !supportsZoneMetric(sport, primaryMetric.value)
+    ) {
+      primaryMetric.setValue(IntensityMetric.Rpe);
+    }
+  }
+
   private patchForm(value: TrainingSessionFormValue): void {
-    this.form.patchValue({
-      title: value.title,
-      scheduledDate: value.scheduledDate,
-      discipline: value.discipline,
-      workoutType: value.workoutType,
-      intensityMetric: value.intensityMetric,
-      plannedDistanceKm: value.plannedDistanceKm,
-      objective: value.objective,
-      description: value.description,
-      notes: value.notes,
-    });
+    this.form.patchValue(
+      {
+        title: value.title,
+        scheduledDate: value.scheduledDate,
+        sport: value.sport,
+        modality: value.modality,
+        category: value.category,
+        primaryMetric: value.primaryMetric,
+        plannedDistanceKm: value.plannedDistanceKm,
+        objective: value.objective,
+        description: value.description,
+        notes: value.notes,
+      },
+      { emitEvent: false },
+    );
     this.blocks.clear();
     value.blocks.forEach((block) => this.blocks.push(this.createBlockGroup(block)));
     this.form.markAsPristine();
@@ -311,24 +409,17 @@ export class TrainingSessionFormPageComponent {
       {
         id: this.formBuilder.nonNullable.control(value?.id ?? createId()),
         name: this.formBuilder.nonNullable.control(value?.name ?? '', Validators.required),
-        blockType: this.formBuilder.nonNullable.control(
-          value?.blockType ?? WorkoutBlockType.Active,
+        phase: this.formBuilder.nonNullable.control(value?.phase ?? StepPhase.Active),
+        targetType: this.formBuilder.nonNullable.control(value?.targetType ?? BlockTargetType.Time),
+        durationMinutes: this.formBuilder.control<number | null>(
+          value?.durationMinutes ?? null,
+          Validators.min(0),
         ),
-        durationMinutes: this.formBuilder.control<number | null>(value?.durationMinutes ?? null, [
-          Validators.required,
-          Validators.min(0.1),
-        ]),
         distanceKm: this.formBuilder.control<number | null>(
           value?.distanceKm ?? null,
           Validators.min(0.1),
         ),
-        targetType: this.formBuilder.nonNullable.control(
-          value?.targetType ?? WorkoutBlockTargetType.Time,
-        ),
         trainingZoneId: this.formBuilder.control<string | null>(value?.trainingZoneId ?? null),
-        trainingZoneSnapshot: this.formBuilder.control<TrainingZoneSnapshot | null>(
-          value?.trainingZoneSnapshot ?? null,
-        ),
         targetRpe: this.formBuilder.control<number | null>(value?.targetRpe ?? null, [
           Validators.min(1),
           Validators.max(10),
@@ -399,4 +490,10 @@ function cadenceRangeValidator(control: AbstractControl): ValidationErrors | nul
     return { cadenceRange: 'La cadencia mínima no puede ser mayor que la máxima.' };
   }
   return null;
+}
+
+function formatPace(secondsPerKm: number): string {
+  const minutes = Math.floor(secondsPerKm / 60);
+  const seconds = String(Math.round(secondsPerKm % 60)).padStart(2, '0');
+  return `${minutes}:${seconds}`;
 }

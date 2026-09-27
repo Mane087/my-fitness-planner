@@ -1,12 +1,18 @@
 import { IDBKeyRange as FakeIDBKeyRange } from 'fake-indexeddb';
 
-import type { AppSettingsEntity } from '../../src/app/core/domain/app-settings.model';
-import { CalendarDefaultView, TimeFormat } from '../../src/app/core/domain/app-settings.model';
-import { WeekStartsOn } from '../../src/app/core/domain/sport-profile.model';
-import type { TrainingZoneEntity } from '../../src/app/core/domain/training-zone.model';
-import { INDEXED_DB_NAME, IndexedDbStore } from '../../src/app/core/storage/indexed-db.config';
+import {
+  CalendarDefaultView,
+  TimeFormat,
+  WeekStartsOn,
+} from '../../src/app/core/domain/calendar.enums';
+import type { AppSettingsEntity } from '../../src/app/core/domain/schemas/app-settings.schema';
+import {
+  INDEXED_DB_NAME,
+  INDEXED_DB_VERSION,
+  IndexedDbStore,
+} from '../../src/app/core/storage/indexed-db.config';
 import { IndexedDbService } from '../../src/app/core/storage/indexed-db.service';
-import { V1_STORE_DEFINITIONS } from '../../src/app/core/storage/migrations/v1-initial-stores';
+import { scheduledWorkout } from '../domain/fixtures';
 import { installFakeIndexedDb, openDatabase, uninstallIndexedDb } from './fake-indexeddb.helpers';
 
 function createSettings(overrides: Partial<AppSettingsEntity> = {}): AppSettingsEntity {
@@ -21,19 +27,6 @@ function createSettings(overrides: Partial<AppSettingsEntity> = {}): AppSettings
   };
 }
 
-function createZone(id: string, sortOrder: number): TrainingZoneEntity {
-  return {
-    id,
-    name: `Zone ${sortOrder}`,
-    minHeartRate: 100 + sortOrder * 10,
-    maxHeartRate: 110 + sortOrder * 10,
-    sortOrder,
-    isDefault: true,
-    createdAt: '2026-01-01T00:00:00.000Z',
-    updatedAt: '2026-01-01T00:00:00.000Z',
-  };
-}
-
 describe('IndexedDbService', () => {
   let service: IndexedDbService;
 
@@ -45,9 +38,9 @@ describe('IndexedDbService', () => {
   it('initialize creates every configured store', async () => {
     await service.initialize();
 
-    const database = await openDatabase(INDEXED_DB_NAME, 1);
-    for (const definition of V1_STORE_DEFINITIONS) {
-      expect(database.objectStoreNames.contains(definition.name)).toBe(true);
+    const database = await openDatabase(INDEXED_DB_NAME, INDEXED_DB_VERSION);
+    for (const storeName of Object.values(IndexedDbStore)) {
+      expect(database.objectStoreNames.contains(storeName)).toBe(true);
     }
     database.close();
   });
@@ -104,26 +97,42 @@ describe('IndexedDbService', () => {
   });
 
   it('getAllFromIndex returns records matching the index key', async () => {
-    await service.add(IndexedDbStore.TrainingZones, createZone('z1', 1));
-    await service.add(IndexedDbStore.TrainingZones, createZone('z2', 2));
+    await service.add(IndexedDbStore.ScheduledWorkouts, scheduledWorkout({ id: 'ride' }));
+    await service.add(
+      IndexedDbStore.ScheduledWorkouts,
+      scheduledWorkout({ id: 'run', sport: 'running', modality: 'trail' }),
+    );
 
-    const zones = await service.getAllFromIndex(IndexedDbStore.TrainingZones, 'by_sort_order', 2);
+    const runs = await service.getAllFromIndex(
+      IndexedDbStore.ScheduledWorkouts,
+      'by_sport',
+      'running',
+    );
 
-    expect(zones.map((zone) => zone.id)).toEqual(['z2']);
+    expect(runs.map((workout) => workout.id)).toEqual(['run']);
   });
 
   it('getAllByIndexRange returns records inside the range ordered by the index', async () => {
-    await service.add(IndexedDbStore.TrainingZones, createZone('z3', 3));
-    await service.add(IndexedDbStore.TrainingZones, createZone('z1', 1));
-    await service.add(IndexedDbStore.TrainingZones, createZone('z2', 2));
-
-    const zones = await service.getAllByIndexRange(
-      IndexedDbStore.TrainingZones,
-      'by_sort_order',
-      FakeIDBKeyRange.bound(1, 2) as unknown as IDBKeyRange,
+    await service.add(
+      IndexedDbStore.ScheduledWorkouts,
+      scheduledWorkout({ id: 'late', scheduledDate: '2026-10-03' }),
+    );
+    await service.add(
+      IndexedDbStore.ScheduledWorkouts,
+      scheduledWorkout({ id: 'early', scheduledDate: '2026-09-28' }),
+    );
+    await service.add(
+      IndexedDbStore.ScheduledWorkouts,
+      scheduledWorkout({ id: 'middle', scheduledDate: '2026-09-30' }),
     );
 
-    expect(zones.map((zone) => zone.id)).toEqual(['z1', 'z2']);
+    const workouts = await service.getAllByIndexRange(
+      IndexedDbStore.ScheduledWorkouts,
+      'by_scheduled_date',
+      FakeIDBKeyRange.bound('2026-09-28', '2026-09-30') as unknown as IDBKeyRange,
+    );
+
+    expect(workouts.map((workout) => workout.id)).toEqual(['early', 'middle']);
   });
 
   it('recovers after a failed operation by reopening the database', async () => {

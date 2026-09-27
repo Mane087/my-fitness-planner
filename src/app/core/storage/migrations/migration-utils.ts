@@ -27,6 +27,27 @@ export function deleteStoreIfExists(context: IndexedDbMigrationContext, storeNam
   }
 }
 
+export function deleteIndexIfExists(store: IDBObjectStore, indexName: string): void {
+  if (store.indexNames.contains(indexName)) {
+    store.deleteIndex(indexName);
+  }
+}
+
+/**
+ * Reads every record of a store inside the upgrade transaction and hands them to `onRecords`.
+ * Work that depends on the records (writes, further reads) must happen inside the callback.
+ */
+export function readAllRecords<Record>(
+  store: IDBObjectStore,
+  onRecords: (records: Record[]) => void,
+): void {
+  const request = store.getAll();
+
+  request.onsuccess = () => {
+    onRecords(request.result as Record[]);
+  };
+}
+
 /**
  * Rewrites every record of a store inside the upgrade transaction.
  * Returning `null` from `transform` deletes the record.

@@ -1,4 +1,3 @@
-import { IndexedDbStore } from '../indexed-db.config';
 import type { IndexedDbMigration, IndexedDbStoreDefinition } from '../indexed-db.types';
 import { ensureStore } from './migration-utils';
 
@@ -6,12 +5,12 @@ import { ensureStore } from './migration-utils';
 // add a new migration instead so existing databases upgrade step by step.
 export const V1_STORE_DEFINITIONS: readonly IndexedDbStoreDefinition[] = [
   {
-    name: IndexedDbStore.SportProfiles,
+    name: 'sport_profiles',
     keyPath: 'id',
     indexes: [{ name: 'by_name', keyPath: 'name' }],
   },
   {
-    name: IndexedDbStore.TrainingZones,
+    name: 'training_zones',
     keyPath: 'id',
     indexes: [
       { name: 'by_sort_order', keyPath: 'sortOrder' },
@@ -19,7 +18,7 @@ export const V1_STORE_DEFINITIONS: readonly IndexedDbStoreDefinition[] = [
     ],
   },
   {
-    name: IndexedDbStore.WorkoutTemplates,
+    name: 'workout_templates',
     keyPath: 'id',
     indexes: [
       { name: 'by_archived', keyPath: 'archived' },
@@ -29,7 +28,7 @@ export const V1_STORE_DEFINITIONS: readonly IndexedDbStoreDefinition[] = [
     ],
   },
   {
-    name: IndexedDbStore.ScheduledWorkouts,
+    name: 'scheduled_workouts',
     keyPath: 'id',
     indexes: [
       { name: 'by_scheduled_date', keyPath: 'scheduledDate' },
@@ -41,7 +40,7 @@ export const V1_STORE_DEFINITIONS: readonly IndexedDbStoreDefinition[] = [
     ],
   },
   {
-    name: IndexedDbStore.AppSettings,
+    name: 'app_settings',
     keyPath: 'id',
     indexes: [],
   },

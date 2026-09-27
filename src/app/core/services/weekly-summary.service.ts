@@ -1,12 +1,12 @@
 import { inject, Injectable } from '@angular/core';
-import type { ScheduledWorkoutEntity } from '../domain/scheduled-workout.model';
+
+import type { ScheduledWorkoutEntity } from '../domain/schemas/scheduled-workout.schema';
 import {
+  SPORTS,
+  WORKOUT_CATEGORIES,
+  WorkoutCategory,
   WorkoutStatus,
-  WorkoutType,
-  WORKOUT_DISCIPLINES,
-  WORKOUT_TYPES,
-  type WorkoutDiscipline as WorkoutDisciplineType,
-  type WorkoutType as WorkoutTypeType,
+  type Sport,
 } from '../domain/workout.enums';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 import { addDays, formatDateOnly, parseDateOnly } from './training-calendar.service';
@@ -15,14 +15,20 @@ export interface WeeklySummary {
   startDate: string;
   endDate: string;
   totalSessions: number;
-  totalDurationMinutes: number;
+  totalDurationSeconds: number;
   restDays: number;
-  sessionsByType: Record<WorkoutTypeType, number>;
-  durationByType: Record<WorkoutTypeType, number>;
-  sessionsByDiscipline: Record<WorkoutDisciplineType, number>;
-  durationByDiscipline: Record<WorkoutDisciplineType, number>;
+  sessionsByCategory: Record<WorkoutCategory, number>;
+  durationByCategory: Record<WorkoutCategory, number>;
+  sessionsBySport: Record<Sport, number>;
+  durationBySport: Record<Sport, number>;
   intenseSessions: number;
 }
+
+const INTENSE_CATEGORIES: readonly WorkoutCategory[] = [
+  WorkoutCategory.Threshold,
+  WorkoutCategory.Vo2Max,
+  WorkoutCategory.Power,
+];
 
 @Injectable({ providedIn: 'root' })
 export class WeeklySummaryService {
@@ -35,32 +41,32 @@ export class WeeklySummaryService {
       weekRange.endDate,
     );
     const countedWorkouts = workouts.filter((workout) => workout.status === WorkoutStatus.Planned);
-    const sessionsByType = createWorkoutTypeRecord();
-    const durationByType = createWorkoutTypeRecord();
-    const sessionsByDiscipline = createWorkoutDisciplineRecord();
-    const durationByDiscipline = createWorkoutDisciplineRecord();
+    const sessionsByCategory = createRecord(WORKOUT_CATEGORIES);
+    const durationByCategory = createRecord(WORKOUT_CATEGORIES);
+    const sessionsBySport = createRecord(SPORTS);
+    const durationBySport = createRecord(SPORTS);
     const activeDays = new Set(countedWorkouts.map((workout) => workout.scheduledDate));
 
     for (const workout of countedWorkouts) {
-      sessionsByType[workout.workoutType] += 1;
-      durationByType[workout.workoutType] += workout.estimatedDurationMinutes;
-      sessionsByDiscipline[workout.discipline] += 1;
-      durationByDiscipline[workout.discipline] += workout.estimatedDurationMinutes;
+      sessionsByCategory[workout.category] += 1;
+      durationByCategory[workout.category] += workout.plannedDurationSeconds;
+      sessionsBySport[workout.sport] += 1;
+      durationBySport[workout.sport] += workout.plannedDurationSeconds;
     }
 
     return {
       startDate: weekRange.startDate,
       endDate: weekRange.endDate,
       totalSessions: countedWorkouts.length,
-      totalDurationMinutes: countedWorkouts.reduce(
-        (total, workout) => total + workout.estimatedDurationMinutes,
+      totalDurationSeconds: countedWorkouts.reduce(
+        (total, workout) => total + workout.plannedDurationSeconds,
         0,
       ),
       restDays: 7 - activeDays.size,
-      sessionsByType,
-      durationByType,
-      sessionsByDiscipline,
-      durationByDiscipline,
+      sessionsByCategory,
+      durationByCategory,
+      sessionsBySport,
+      durationBySport,
       intenseSessions: countedWorkouts.filter(isIntenseWorkout).length,
     };
   }
@@ -79,34 +85,10 @@ function getWeekRange(referenceDate: string): { startDate: string; endDate: stri
   };
 }
 
-function createWorkoutTypeRecord(): Record<WorkoutTypeType, number> {
-  return WORKOUT_TYPES.reduce(
-    (record, type) => ({ ...record, [type]: 0 }),
-    {} as Record<WorkoutTypeType, number>,
-  );
-}
-
-function createWorkoutDisciplineRecord(): Record<WorkoutDisciplineType, number> {
-  return WORKOUT_DISCIPLINES.reduce(
-    (record, discipline) => ({ ...record, [discipline]: 0 }),
-    {} as Record<WorkoutDisciplineType, number>,
-  );
+function createRecord<Key extends string>(keys: readonly Key[]): Record<Key, number> {
+  return Object.fromEntries(keys.map((key) => [key, 0])) as Record<Key, number>;
 }
 
 function isIntenseWorkout(workout: ScheduledWorkoutEntity): boolean {
-  if (isIntenseWorkoutType(workout.workoutType)) {
-    return true;
-  }
-
-  const zoneName = workout.targetZoneSnapshot?.name.toLowerCase() ?? '';
-  return (
-    zoneName.includes('z4') ||
-    zoneName.includes('z5') ||
-    zoneName.includes('threshold') ||
-    zoneName.includes('high intensity')
-  );
-}
-
-function isIntenseWorkoutType(workoutType: WorkoutTypeType): boolean {
-  return workoutType === WorkoutType.Threshold || workoutType === WorkoutType.Vo2Max;
+  return INTENSE_CATEGORIES.includes(workout.category);
 }

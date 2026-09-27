@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 
-import { WeekStartsOn, type WeekStartsOn as WeekStartsOnType } from '../domain/sport-profile.model';
+import { WeekStartsOn, type WeekStartsOn as WeekStartsOnType } from '../domain/calendar.enums';
 import { CalendarDayViewModel } from '../interfaces/calendar-view-models';
 
 const WEEKDAYS_MONDAY_FIRST = [
