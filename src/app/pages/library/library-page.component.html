@@ -1,0 +1,225 @@
+<main class="min-h-screen bg-slate-900 px-4 py-6 text-slate-50">
+  <section class="mx-auto flex w-full flex-col gap-4 lg:max-w-3/4" aria-labelledby="library-title">
+    <header class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h1 id="library-title" class="text-3xl font-bold">Biblioteca de entrenamientos</h1>
+        <p class="mt-1 text-slate-300">
+          Crea un entrenamiento una vez y prográmalo las veces que quieras.
+        </p>
+      </div>
+      <a
+        routerLink="/library/new"
+        class="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
+        >Nueva plantilla</a
+      >
+    </header>
+
+    @if (statusMessage()) {
+      <p
+        class="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-4 text-emerald-100"
+        role="status"
+      >
+        {{ statusMessage() }}
+      </p>
+    }
+    @if (errorMessage()) {
+      <p class="rounded-2xl border border-red-900/60 bg-red-950/30 p-4 text-red-200" role="alert">
+        {{ errorMessage() }}
+      </p>
+    }
+
+    @if (isLoading()) {
+      <p class="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 text-slate-300">
+        Cargando biblioteca...
+      </p>
+    } @else if (!hasTemplates()) {
+      <div
+        class="flex flex-col items-start gap-3 rounded-3xl border border-dashed border-slate-700 bg-slate-950/70 p-6"
+      >
+        <h2 class="text-xl font-bold">Todavía no tienes plantillas</h2>
+        <p class="text-slate-300">
+          Guarda aquí tus entrenamientos recurrentes, como tus series de umbral o tu rutina de
+          movilidad, y prográmalos en el calendario sin volver a capturarlos. También puedes usar
+          "Guardar como plantilla" al editar un entrenamiento.
+        </p>
+        <a
+          routerLink="/library/new"
+          class="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
+          >Crear la primera plantilla</a
+        >
+      </div>
+    } @else {
+      <div
+        class="flex flex-col gap-3 rounded-3xl border border-slate-800 bg-slate-950/70 p-4 sm:flex-row sm:flex-wrap sm:items-end"
+        role="search"
+        aria-label="Filtrar plantillas"
+      >
+        <label class="flex flex-col gap-1" for="library-sport">
+          <span class="text-sm font-semibold text-slate-300">Deporte</span>
+          <select
+            id="library-sport"
+            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            (change)="setSport($event)"
+          >
+            <option value="" [selected]="filters().sport === null">Todos</option>
+            @for (option of sportOptions; track option.value) {
+              <option [value]="option.value" [selected]="filters().sport === option.value">
+                {{ option.label }}
+              </option>
+            }
+          </select>
+        </label>
+        <label class="flex flex-col gap-1" for="library-category">
+          <span class="text-sm font-semibold text-slate-300">Categoría</span>
+          <select
+            id="library-category"
+            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            (change)="setCategory($event)"
+          >
+            <option value="" [selected]="filters().category === null">Todas</option>
+            @for (option of categoryOptions(); track option.value) {
+              <option [value]="option.value" [selected]="filters().category === option.value">
+                {{ option.label }}
+              </option>
+            }
+          </select>
+        </label>
+        <label class="flex items-center gap-2 py-2" for="library-archived">
+          <input
+            id="library-archived"
+            type="checkbox"
+            class="h-4 w-4"
+            [checked]="filters().shouldIncludeArchived"
+            (change)="setShowArchived($event)"
+          />
+          <span>Mostrar archivadas</span>
+        </label>
+      </div>
+
+      <ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Plantillas">
+        @for (template of templates(); track template.id) {
+          <li>
+            <article
+              class="flex h-full flex-col gap-3 rounded-2xl border border-l-4 border-slate-800 bg-slate-950/70 p-4"
+              [ngClass]="template.colorClass"
+              [class.opacity-60]="template.isArchived"
+              [attr.aria-labelledby]="'template-' + template.id"
+            >
+              <div>
+                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+                  {{ template.sportLabel }} · {{ template.categoryLabel }}
+                </p>
+                <h2 [id]="'template-' + template.id" class="mt-1 text-lg font-semibold">
+                  {{ template.title }}
+                </h2>
+                @if (template.isArchived) {
+                  <span
+                    class="mt-1 inline-block rounded-full bg-slate-700 px-2 text-xs font-bold text-slate-200"
+                    >Archivada</span
+                  >
+                }
+              </div>
+              <p class="text-sm text-slate-300">
+                {{ template.durationLabel }} · {{ template.distanceLabel }} ·
+                {{ template.stepCountLabel }}
+              </p>
+              @if (template.objective) {
+                <p class="text-sm text-slate-400">{{ template.objective }}</p>
+              }
+              <div class="mt-auto flex flex-wrap gap-2">
+                @if (!template.isArchived) {
+                  <button
+                    type="button"
+                    class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
+                    [attr.aria-label]="'Programar ' + template.title"
+                    (click)="openSchedule(template)"
+                  >
+                    Programar
+                  </button>
+                }
+                <a
+                  class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                  [routerLink]="['/library', 'edit', template.id]"
+                  [attr.aria-label]="'Editar ' + template.title"
+                  >Editar</a
+                >
+                @if (template.isArchived) {
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                    [attr.aria-label]="'Restaurar ' + template.title"
+                    (click)="restore(template)"
+                  >
+                    Restaurar
+                  </button>
+                } @else {
+                  <button
+                    type="button"
+                    class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
+                    [attr.aria-label]="'Archivar ' + template.title"
+                    (click)="archive(template)"
+                  >
+                    Archivar
+                  </button>
+                }
+              </div>
+            </article>
+          </li>
+        } @empty {
+          <li
+            class="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-slate-400 md:col-span-2 xl:col-span-3"
+          >
+            No hay plantillas con estos filtros.
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <app-modal
+    [showModal]="scheduling() !== null"
+    labelledBy="schedule-title"
+    (dismissed)="closeSchedule()"
+  >
+    @if (scheduling(); as template) {
+      <h2 id="schedule-title" class="text-xl font-bold">Programar "{{ template.title }}"</h2>
+      <p class="mt-2 text-sm text-slate-600">
+        Se crea un entrenamiento con una copia de los pasos. Si después editas la plantilla, el
+        entrenamiento programado no cambia.
+      </p>
+      <label class="mt-4 flex flex-col gap-1" for="schedule-date">
+        <span class="font-semibold">Fecha</span>
+        <input
+          id="schedule-date"
+          type="date"
+          class="rounded-lg border border-slate-300 px-3 py-2"
+          [value]="scheduleDate()"
+          (input)="setScheduleDate($event)"
+        />
+      </label>
+      @if (scheduleError()) {
+        <p class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">
+          {{ scheduleError() }}
+        </p>
+      }
+      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button
+          type="button"
+          class="rounded-lg border border-slate-300 px-4 py-2 font-semibold"
+          [disabled]="isScheduling()"
+          (click)="closeSchedule()"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
+          [disabled]="isScheduling()"
+          (click)="confirmSchedule()"
+        >
+          {{ isScheduling() ? 'Programando...' : 'Programar' }}
+        </button>
+      </div>
+    }
+  </app-modal>
+</main>

@@ -7,6 +7,9 @@ import type {
   WorkoutCategory,
 } from '../domain/workout.enums';
 
+/** The session form edits a scheduled workout or a reusable template (without date). */
+export type TrainingSessionFormKind = 'workout' | 'template';
+
 /** Session form value. Header values use UI units (minutes, km); steps use domain units. */
 export interface TrainingSessionFormValue {
   id?: string;

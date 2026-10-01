@@ -7,6 +7,11 @@ import {
   type ScheduledWorkoutEntity,
 } from '../../core/domain/schemas/scheduled-workout.schema';
 import type { TrainingZoneSetEntity } from '../../core/domain/schemas/training-zone-set.schema';
+import type { WorkoutDefinition } from '../../core/domain/schemas/workout-definition.schema';
+import {
+  workoutTemplateSchema,
+  type WorkoutTemplateEntity,
+} from '../../core/domain/schemas/workout-template.schema';
 import { StepKind, type WorkoutStep } from '../../core/domain/schemas/workout-step.schema';
 import {
   IntensityMetric,
@@ -19,6 +24,7 @@ import {
   type SportModality,
 } from '../../core/domain/workout.enums';
 import type {
+  TrainingSessionFormKind,
   TrainingSessionFormState,
   TrainingSessionFormValue,
   TrainingSessionTotals,
@@ -28,6 +34,7 @@ import { AthleteProfileRepository } from '../../core/repositories/athlete-profil
 import { cloneValue, createId, nowIso } from '../../core/repositories/repository-utils';
 import { ScheduledWorkoutRepository } from '../../core/repositories/scheduled-workout.repository';
 import { TrainingZoneSetRepository } from '../../core/repositories/training-zone-set.repository';
+import { WorkoutTemplateRepository } from '../../core/repositories/workout-template.repository';
 import { calculateWorkoutTotals } from '../../core/services/workout-structure.utils';
 
 @Injectable({ providedIn: 'root' })
@@ -35,7 +42,9 @@ export class TrainingSessionFormFacade {
   private readonly workouts = inject(ScheduledWorkoutRepository);
   private readonly zoneSetsRepository = inject(TrainingZoneSetRepository);
   private readonly profiles = inject(AthleteProfileRepository);
+  private readonly templates = inject(WorkoutTemplateRepository);
 
+  /** Empty form; templates have no date, so they pass an empty one. */
   async loadCreateForm(date: string): Promise<TrainingSessionFormState> {
     const [profile, zoneSets] = await Promise.all([
       this.profiles.getActiveProfile(),
@@ -76,35 +85,32 @@ export class TrainingSessionFormFacade {
       throw new Error('El entrenamiento no existe.');
     }
 
-    const calculated = calculateWorkoutTotals(workout.steps);
-
     return {
       mode: 'edit',
       selectedDate: workout.scheduledDate,
       profileAvailable: profile !== null,
       zoneSets,
-      formValue: {
-        id: workout.id,
-        title: workout.title,
-        scheduledDate: workout.scheduledDate,
-        sport: workout.sport,
-        modality: workout.modality ?? null,
-        category: workout.category,
-        primaryMetric: workout.primaryMetric,
-        // A stored duration different from the calculated one was an estimate from the user.
-        estimatedDurationMinutes:
-          workout.plannedDurationSeconds !== calculated.durationSeconds
-            ? workout.plannedDurationSeconds / 60
-            : null,
-        plannedDistanceKm:
-          calculated.distanceMeters === null && workout.plannedDistanceMeters !== undefined
-            ? workout.plannedDistanceMeters / 1000
-            : null,
-        objective: workout.objective ?? '',
-        description: workout.description ?? '',
-        notes: workout.notes ?? '',
-        steps: cloneValue(workout.steps),
-      },
+      formValue: toFormValue(workout, workout.id, workout.scheduledDate),
+    };
+  }
+
+  async loadEditTemplateForm(templateId: string): Promise<TrainingSessionFormState> {
+    const [profile, zoneSets, template] = await Promise.all([
+      this.profiles.getActiveProfile(),
+      this.zoneSetsRepository.findAll(),
+      this.templates.findById(templateId),
+    ]);
+
+    if (!template) {
+      throw new Error('La plantilla no existe.');
+    }
+
+    return {
+      mode: 'edit',
+      selectedDate: '',
+      profileAvailable: profile !== null,
+      zoneSets,
+      formValue: toFormValue(template, template.id, ''),
     };
   }
 
@@ -137,11 +143,15 @@ export class TrainingSessionFormFacade {
     };
   }
 
-  validate(value: TrainingSessionFormValue, zoneSets: readonly TrainingZoneSetEntity[]): string[] {
+  validate(
+    value: TrainingSessionFormValue,
+    zoneSets: readonly TrainingZoneSetEntity[],
+    kind: TrainingSessionFormKind = 'workout',
+  ): string[] {
     const errors: string[] = [];
 
     if (!value.title.trim()) errors.push('El título del entrenamiento es requerido.');
-    if (!value.scheduledDate) errors.push('La fecha es requerida.');
+    if (kind === 'workout' && !value.scheduledDate) errors.push('La fecha es requerida.');
     if (!value.sport) errors.push('Selecciona un deporte.');
     if (!value.category) errors.push('Selecciona la categoría del entrenamiento.');
     if (!value.primaryMetric) errors.push('Selecciona la métrica de intensidad.');
@@ -163,7 +173,10 @@ export class TrainingSessionFormFacade {
     }
 
     if (errors.length === 0) {
-      const result = scheduledWorkoutSchema.safeParse(this.buildWorkout(value, null));
+      const result =
+        kind === 'workout'
+          ? scheduledWorkoutSchema.safeParse(this.buildWorkout(value, null))
+          : workoutTemplateSchema.safeParse(this.buildTemplate(value, null));
 
       if (!result.success) {
         errors.push(...result.error.issues.map((issue) => toFormMessage(issue, value.steps)));
@@ -177,11 +190,7 @@ export class TrainingSessionFormFacade {
     value: TrainingSessionFormValue,
     zoneSets: readonly TrainingZoneSetEntity[],
   ): Promise<ScheduledWorkoutEntity> {
-    const errors = this.validate(value, zoneSets);
-
-    if (errors.length > 0) {
-      throw new Error(errors[0] ?? 'El formulario no es válido.');
-    }
+    this.assertValid(value, zoneSets, 'workout');
 
     const existing = value.id ? await this.workouts.findById(value.id) : null;
     const workout = this.buildWorkout(value, existing);
@@ -189,21 +198,84 @@ export class TrainingSessionFormFacade {
     return existing ? this.workouts.update(workout) : this.workouts.create(workout);
   }
 
+  async saveTemplate(
+    value: TrainingSessionFormValue,
+    zoneSets: readonly TrainingZoneSetEntity[],
+  ): Promise<WorkoutTemplateEntity> {
+    this.assertValid(value, zoneSets, 'template');
+
+    const existing = value.id ? await this.templates.findById(value.id) : null;
+    const template = this.buildTemplate(value, existing);
+
+    return existing ? this.templates.update(template) : this.templates.create(template);
+  }
+
+  /** Copies the definition shown in the form to a new template, without date or status. */
+  saveAsTemplate(
+    value: TrainingSessionFormValue,
+    zoneSets: readonly TrainingZoneSetEntity[],
+  ): Promise<WorkoutTemplateEntity> {
+    const definition = { ...value };
+    delete definition.id;
+
+    return this.saveTemplate(definition, zoneSets);
+  }
+
+  private assertValid(
+    value: TrainingSessionFormValue,
+    zoneSets: readonly TrainingZoneSetEntity[],
+    kind: TrainingSessionFormKind,
+  ): void {
+    const errors = this.validate(value, zoneSets, kind);
+
+    if (errors.length > 0) {
+      throw new Error(errors[0] ?? 'El formulario no es válido.');
+    }
+  }
+
+  private buildTemplate(
+    value: TrainingSessionFormValue,
+    existing: WorkoutTemplateEntity | null,
+  ): WorkoutTemplateEntity {
+    const timestamp = nowIso();
+
+    return {
+      ...this.buildDefinition(value),
+      id: existing?.id ?? createId(),
+      isArchived: existing?.isArchived ?? false,
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+    };
+  }
+
   private buildWorkout(
     value: TrainingSessionFormValue,
     existing: ScheduledWorkoutEntity | null,
   ): ScheduledWorkoutEntity {
+    const timestamp = nowIso();
+
+    return {
+      ...this.buildDefinition(value),
+      id: existing?.id ?? createId(),
+      scheduledDate: value.scheduledDate,
+      status: existing?.status ?? WorkoutStatus.Planned,
+      ...(existing?.completion ? { completion: existing.completion } : {}),
+      ...(existing?.sourceTemplateId ? { sourceTemplateId: existing.sourceTemplateId } : {}),
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+    };
+  }
+
+  /** The part shared by scheduled workouts and templates. Totals are stored in domain units. */
+  private buildDefinition(value: TrainingSessionFormValue): WorkoutDefinition {
     const totals = this.calculateTotals(
       value.steps,
       value.estimatedDurationMinutes,
       value.plannedDistanceKm,
     );
-    const timestamp = nowIso();
 
     return {
-      id: existing?.id ?? createId(),
       title: value.title.trim(),
-      scheduledDate: value.scheduledDate,
       sport: value.sport ?? Sport.Cycling,
       ...(value.modality ? { modality: value.modality } : {}),
       category: value.category ?? WorkoutCategory.Free,
@@ -216,13 +288,39 @@ export class TrainingSessionFormFacade {
       ...(value.objective.trim() ? { objective: value.objective.trim() } : {}),
       ...(value.description.trim() ? { description: value.description.trim() } : {}),
       ...(value.notes.trim() ? { notes: value.notes.trim() } : {}),
-      status: existing?.status ?? WorkoutStatus.Planned,
-      ...(existing?.completion ? { completion: existing.completion } : {}),
-      ...(existing?.sourceTemplateId ? { sourceTemplateId: existing.sourceTemplateId } : {}),
-      createdAt: existing?.createdAt ?? timestamp,
-      updatedAt: timestamp,
     };
   }
+}
+
+/** Form value of a stored definition. A stored duration that differs from the steps is an estimate. */
+function toFormValue(
+  definition: WorkoutDefinition,
+  id: string,
+  scheduledDate: string,
+): TrainingSessionFormValue {
+  const calculated = calculateWorkoutTotals(definition.steps);
+
+  return {
+    id,
+    title: definition.title,
+    scheduledDate,
+    sport: definition.sport,
+    modality: definition.modality ?? null,
+    category: definition.category,
+    primaryMetric: definition.primaryMetric,
+    estimatedDurationMinutes:
+      definition.plannedDurationSeconds !== calculated.durationSeconds
+        ? definition.plannedDurationSeconds / 60
+        : null,
+    plannedDistanceKm:
+      calculated.distanceMeters === null && definition.plannedDistanceMeters !== undefined
+        ? definition.plannedDistanceMeters / 1000
+        : null,
+    objective: definition.objective ?? '',
+    description: definition.description ?? '',
+    notes: definition.notes ?? '',
+    steps: cloneValue(definition.steps),
+  };
 }
 
 /** Prefixes step issues with their visible position: `Paso 2:` or `Paso 2.1:` in a repeat group. */

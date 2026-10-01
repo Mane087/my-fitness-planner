@@ -166,6 +166,8 @@ Regla: `status === 'completed'` si y solo si `completion` está presente.
 
 Las transiciones de estado las hace `WorkoutCompletionService`: `complete` guarda `status` y `completion` juntos (con `completedAt` asignado por el servicio), y `skip` y `reopen` eliminan `completion`.
 
+Plantillas: programar una plantilla (`WorkoutTemplateSchedulerService`) crea un `ScheduledWorkoutEntity` con una copia de la definición y `sourceTemplateId`; editar o archivar la plantilla después no cambia los entrenamientos ya programados. "Guardar como plantilla" copia la definición del formulario sin fecha, estado ni registro. El filtro de archivadas se aplica en memoria porque IndexedDB no admite booleanos como clave de índice; el filtro por deporte usa `by_sport`.
+
 Resumen semanal (`WeeklySummaryService`): la semana empieza según `weekStartsOn`. El tiempo y la distancia planeados incluyen todos los entrenamientos de la semana, también los omitidos. Los valores reales salen de los entrenamientos completados; si un registro no tiene duración o distancia, se cuenta el valor planeado. El cumplimiento es tiempo real entre tiempo planeado.
 
 Al programar una plantilla se copia su definición completa (`steps` incluidos) y se guarda `sourceTemplateId`. Editar la plantilla después no modifica los entrenamientos ya programados.

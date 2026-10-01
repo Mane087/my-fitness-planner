@@ -8,7 +8,7 @@ import { TrainingZoneSetRepository } from '../../src/app/core/repositories/train
 import { WorkoutTemplateRepository } from '../../src/app/core/repositories/workout-template.repository';
 import { LocalPersistenceService } from '../../src/app/core/services/local-persistence.service';
 import { WorkoutTemplateSchedulerService } from '../../src/app/core/services/workout-template-scheduler.service';
-import { heartRateZoneSet, scheduledWorkout, workoutTemplate } from '../domain/fixtures';
+import { heartRateZoneSet, interval, scheduledWorkout, workoutTemplate } from '../domain/fixtures';
 import { installFakeIndexedDb } from '../storage/fake-indexeddb.helpers';
 
 describe('repositories (fake-indexeddb)', () => {
@@ -110,6 +110,38 @@ describe('repositories (fake-indexeddb)', () => {
     });
   });
 
+  describe('WorkoutTemplateRepository.findFiltered', () => {
+    beforeEach(async () => {
+      const templates = TestBed.inject(WorkoutTemplateRepository);
+      await templates.create(workoutTemplate({ id: 'ride', title: 'Umbral en ruta' }));
+      await templates.create(
+        workoutTemplate({ id: 'old-ride', title: 'Antigua rodada', isArchived: true }),
+      );
+      await templates.create(
+        workoutTemplate({ id: 'run', title: 'Fartlek', sport: 'running', modality: 'trail' }),
+      );
+    });
+
+    it('hides archived templates by default and sorts by title', async () => {
+      const templates = await TestBed.inject(WorkoutTemplateRepository).findFiltered();
+
+      expect(templates.map((template) => template.id)).toEqual(['run', 'ride']);
+    });
+
+    it('filters by sport and can include archived templates', async () => {
+      const repository = TestBed.inject(WorkoutTemplateRepository);
+
+      const cycling = await repository.findFiltered({ sport: 'cycling' });
+      const cyclingWithArchived = await repository.findFiltered({
+        sport: 'cycling',
+        shouldIncludeArchived: true,
+      });
+
+      expect(cycling.map((template) => template.id)).toEqual(['ride']);
+      expect(cyclingWithArchived.map((template) => template.id)).toEqual(['old-ride', 'ride']);
+    });
+  });
+
   describe('WorkoutTemplateSchedulerService', () => {
     it('schedules a copy of the template steps with the source template id', async () => {
       const templates = TestBed.inject(WorkoutTemplateRepository);
@@ -129,6 +161,22 @@ describe('repositories (fake-indexeddb)', () => {
       expect(scheduled).not.toHaveProperty('isArchived');
       const stored = await TestBed.inject(ScheduledWorkoutRepository).findById(scheduled.id);
       expect(stored?.title).toBe(template.title);
+    });
+
+    it('keeps scheduled workouts when the template steps change or it is archived', async () => {
+      const templates = TestBed.inject(WorkoutTemplateRepository);
+      const template = await templates.create(workoutTemplate({ id: 'template-1' }));
+      const scheduled = await TestBed.inject(WorkoutTemplateSchedulerService).scheduleTemplate(
+        'template-1',
+        '2026-10-02',
+      );
+
+      await templates.update({ ...template, steps: [interval('only-step')] });
+      await templates.archive('template-1');
+
+      const stored = await TestBed.inject(ScheduledWorkoutRepository).findById(scheduled.id);
+      expect(stored?.steps).toEqual(template.steps);
+      expect(stored?.sourceTemplateId).toBe('template-1');
     });
 
     it('fails when the template does not exist', async () => {

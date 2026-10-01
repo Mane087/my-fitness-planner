@@ -27,7 +27,10 @@ import {
   type SportModality,
   type WorkoutCategory,
 } from '../../core/domain/workout.enums';
-import type { TrainingSessionFormValue } from '../../core/models/training-session-form.model';
+import type {
+  TrainingSessionFormKind,
+  TrainingSessionFormValue,
+} from '../../core/models/training-session-form.model';
 import {
   INTENSITY_METRIC_LABELS,
   SPORT_LABELS,
@@ -72,6 +75,14 @@ export class TrainingSessionFormPageComponent {
   private readonly document = inject(DOCUMENT);
   private readonly destroyRef = inject(DestroyRef);
 
+  /** Route data `kind: 'template'` turns the form into the library template form. */
+  readonly kind: TrainingSessionFormKind =
+    this.route.snapshot.data['kind'] === 'template' ? 'template' : 'workout';
+  readonly isTemplate = this.kind === 'template';
+  readonly backLink = this.isTemplate
+    ? { path: '/library', label: 'Volver a la biblioteca' }
+    : { path: '/calendar', label: 'Volver al calendario' };
+
   readonly loading = signal(true);
   readonly saving = signal(false);
   readonly mode = signal<'create' | 'edit'>('create');
@@ -82,6 +93,7 @@ export class TrainingSessionFormPageComponent {
   readonly loadError = signal<string | null>(null);
   /** Step errors are shown only after the first save attempt. */
   readonly hasTriedToSave = signal(false);
+  readonly templateSavedMessage = signal('');
   private readonly savedSteps = signal<WorkoutStep[]>([]);
 
   readonly form = this.formBuilder.group({
@@ -159,6 +171,10 @@ export class TrainingSessionFormPageComponent {
       totals.distanceKm !== null ? ` · ${Math.round(totals.distanceKm * 10) / 10} km` : '';
     return `${duration}${distance}`;
   });
+  readonly heading = computed(() => {
+    const action = this.mode() === 'create' ? 'Crear' : 'Editar';
+    return `${action} ${this.isTemplate ? 'plantilla' : 'entrenamiento'}`;
+  });
   readonly selectedDateLabel = computed(() => {
     this.formChanges();
     return this.formatDate(this.form.controls.scheduledDate.value);
@@ -175,6 +191,11 @@ export class TrainingSessionFormPageComponent {
     merge(this.form.controls.sport.valueChanges, this.form.controls.primaryMetric.valueChanges)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.dropIncompatibleTargets());
+    if (this.isTemplate) {
+      // Templates have no date; the control stays empty.
+      this.form.controls.scheduledDate.clearValidators();
+      this.form.controls.scheduledDate.updateValueAndValidity({ emitEvent: false });
+    }
     void this.load();
   }
 
@@ -186,30 +207,65 @@ export class TrainingSessionFormPageComponent {
     this.form.markAllAsTouched();
     this.hasTriedToSave.set(true);
     const value = this.toFormValue();
-    const errors = this.facade.validate(value, this.zoneSets());
+    if (!this.checkValid(value, this.kind)) return;
+
+    const saved = this.mode() === 'create' ? 'created' : 'updated';
+    this.saving.set(true);
+    try {
+      if (this.isTemplate) {
+        await this.facade.saveTemplate(value, this.zoneSets());
+        this.markSaved();
+        await this.router.navigate(['/library'], { queryParams: { saved } });
+      } else {
+        const workout = await this.facade.save(value, this.zoneSets());
+        this.markSaved();
+        await this.router.navigate(['/calendar'], {
+          queryParams: { date: workout.scheduledDate, saved },
+        });
+      }
+    } catch {
+      this.errors.set([
+        `No se pudo guardar ${this.isTemplate ? 'la plantilla' : 'el entrenamiento'}. Intenta nuevamente.`,
+      ]);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  /** Saves the definition shown in the form as a new template; the workout itself is not saved. */
+  async saveAsTemplate(): Promise<void> {
+    this.form.markAllAsTouched();
+    this.hasTriedToSave.set(true);
+    this.templateSavedMessage.set('');
+    const value = this.toFormValue();
+    if (!this.checkValid(value, 'template')) return;
+
+    this.saving.set(true);
+    try {
+      const template = await this.facade.saveAsTemplate(value, this.zoneSets());
+      this.templateSavedMessage.set(`Se guardó la plantilla "${template.title}".`);
+    } catch {
+      this.errors.set(['No se pudo guardar la plantilla. Intenta nuevamente.']);
+    } finally {
+      this.saving.set(false);
+    }
+  }
+
+  private checkValid(value: TrainingSessionFormValue, kind: TrainingSessionFormKind): boolean {
+    const errors = this.facade.validate(value, this.zoneSets(), kind);
     this.errors.set(errors);
 
     if (this.form.invalid || errors.length > 0 || !this.profileAvailable()) {
       this.focusFirstInvalidControl();
-      return;
+      return false;
     }
 
-    this.saving.set(true);
-    try {
-      const workout = await this.facade.save(value, this.zoneSets());
-      this.form.markAsPristine();
-      this.savedSteps.set(this.steps());
-      await this.router.navigate(['/calendar'], {
-        queryParams: {
-          date: workout.scheduledDate,
-          saved: this.mode() === 'create' ? 'created' : 'updated',
-        },
-      });
-    } catch {
-      this.errors.set(['No se pudo guardar el entrenamiento. Intenta nuevamente.']);
-    } finally {
-      this.saving.set(false);
-    }
+    return true;
+  }
+
+  private markSaved(): void {
+    this.form.markAsPristine();
+    this.savedSteps.set(this.steps());
   }
 
   async cancel(): Promise<void> {
@@ -220,18 +276,27 @@ export class TrainingSessionFormPageComponent {
       if (!confirmed) return;
     }
 
+    if (this.isTemplate) {
+      await this.router.navigate(['/library']);
+      return;
+    }
+
     await this.router.navigate(['/calendar'], {
       queryParams: { date: this.form.controls.scheduledDate.value },
     });
   }
 
   private async load(): Promise<void> {
-    const workoutId = this.route.snapshot.paramMap.get('id');
-    const date = this.route.snapshot.queryParamMap.get('date') ?? this.today();
+    const id = this.route.snapshot.paramMap.get('id');
+    const date = this.isTemplate
+      ? ''
+      : (this.route.snapshot.queryParamMap.get('date') ?? this.today());
 
     try {
-      const state = workoutId
-        ? await this.facade.loadEditForm(workoutId)
+      const state = id
+        ? await (this.isTemplate
+            ? this.facade.loadEditTemplateForm(id)
+            : this.facade.loadEditForm(id))
         : await this.facade.loadCreateForm(date);
       this.mode.set(state.mode);
       this.profileAvailable.set(state.profileAvailable);

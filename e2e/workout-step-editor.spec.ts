@@ -28,7 +28,7 @@ test.describe('Structured step editor', () => {
     await page.locator('#workout-title').fill('Intervalos de umbral');
 
     await page.getByRole('button', { name: 'Agregar intervalo' }).click();
-    await page.getByRole('button', { name: 'Guardar' }).click();
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
     await expect(
       page.getByRole('alert').filter({ hasText: 'Paso 1: El nombre del paso es requerido.' }),
     ).toBeVisible();
@@ -58,7 +58,7 @@ test.describe('Structured step editor', () => {
     await expect(page.getByTestId('workout-totals')).toHaveText('43 min');
     await expect(page.getByTestId('steps-summary')).toContainText('3 pasos · 43 min');
 
-    await page.getByRole('button', { name: 'Guardar' }).click();
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
     await openSavedWorkout(page, 'Intervalos de umbral');
 
     await expect(page.locator('#workout-title')).toHaveValue('Intervalos de umbral');
@@ -97,7 +97,7 @@ test.describe('Structured step editor', () => {
     await page.getByLabel('Duración estimada (min)').fill('30');
     await expect(page.getByTestId('workout-totals')).toHaveText('30 min (estimado)');
 
-    await page.getByRole('button', { name: 'Guardar' }).click();
+    await page.getByRole('button', { name: 'Guardar', exact: true }).click();
     await openSavedWorkout(page, 'Saltos pliométricos');
 
     await expect(page.getByLabel('Duración estimada (min)')).toHaveValue('30');
