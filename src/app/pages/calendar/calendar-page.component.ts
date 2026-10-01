@@ -44,7 +44,9 @@ export class CalendarPageComponent {
         ? 'Entrenamiento guardado correctamente.'
         : saved === 'updated'
           ? 'Entrenamiento actualizado correctamente.'
-          : null,
+          : saved === 'scheduled'
+            ? 'Plantilla programada correctamente.'
+            : null,
     );
     void (selectedDate
       ? this.load(() => this.calendarFacade.loadMonth(selectedDate))

@@ -15,7 +15,7 @@ async function createWorkout(page: Page, title: string): Promise<void> {
   const step = page.getByRole('group', { name: 'Paso 1 · Intervalo', exact: true });
   await step.getByLabel('Nombre *').fill('Fondo');
   await step.getByLabel('Minutos').fill('60');
-  await page.getByRole('button', { name: 'Guardar' }).click();
+  await page.getByRole('button', { name: 'Guardar', exact: true }).click();
   await expect(page).toHaveURL(/\/calendar\?.*saved=created/);
 }
 

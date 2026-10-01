@@ -2,9 +2,13 @@
   <header class="mb-6 flex items-start justify-between gap-4 w-full mx-auto lg:max-w-3/4">
     <div>
       <h1 id="session-form-title" class="text-3xl font-bold">
-        {{ mode() === 'create' ? 'Crear entrenamiento' : 'Editar entrenamiento' }}
+        {{ heading() }}
       </h1>
-      <p class="mt-1 capitalize text-slate-300">{{ selectedDateLabel() }}</p>
+      @if (isTemplate) {
+        <p class="mt-1 text-slate-300">Plantilla de la biblioteca, sin fecha</p>
+      } @else {
+        <p class="mt-1 capitalize text-slate-300">{{ selectedDateLabel() }}</p>
+      }
     </div>
     <button
       type="button"
@@ -21,9 +25,9 @@
         class="mx-auto max-w-3xl rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200"
       >
         <p>{{ loadError() }}</p>
-        <a routerLink="/calendar" class="mt-4 inline-block font-semibold text-cyan-200"
-          >Volver al calendario</a
-        >
+        <a [routerLink]="backLink.path" class="mt-4 inline-block font-semibold text-cyan-200">{{
+          backLink.label
+        }}</a>
       </div>
     } @else if (!profileAvailable()) {
       <div class="rounded-2xl border border-amber-700 bg-amber-950/30 p-6 text-amber-100">
@@ -171,9 +175,29 @@
           </label>
         </section>
 
+        @if (templateSavedMessage()) {
+          <p
+            class="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-800"
+            role="status"
+          >
+            {{ templateSavedMessage() }}
+            <a routerLink="/library" class="font-semibold underline">Ver biblioteca</a>
+          </p>
+        }
+
         <footer
-          class="sticky bottom-0 flex justify-end gap-3 rounded-2xl bg-slate-900/95 p-4 shadow-xl backdrop-blur"
+          class="sticky bottom-0 flex flex-wrap justify-end gap-3 rounded-2xl bg-slate-900/95 p-4 shadow-xl backdrop-blur"
         >
+          @if (!isTemplate) {
+            <button
+              type="button"
+              class="mr-auto rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              [disabled]="saving()"
+              (click)="saveAsTemplate()"
+            >
+              Guardar como plantilla
+            </button>
+          }
           <button
             type="button"
             class="rounded-xl border border-slate-600 px-5 py-3 font-semibold"
@@ -196,9 +220,9 @@
   } @error {
     <div class="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">
       <p>{{ loadError() }}</p>
-      <a routerLink="/calendar" class="mt-4 inline-block font-semibold text-cyan-200"
-        >Volver al calendario</a
-      >
+      <a [routerLink]="backLink.path" class="mt-4 inline-block font-semibold text-cyan-200">{{
+        backLink.label
+      }}</a>
     </div>
   }
 </main>

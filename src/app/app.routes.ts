@@ -36,11 +36,28 @@ export const routes: Routes = [
   {
     path: 'library',
     loadComponent: () =>
-      import('./pages/coming-soon/coming-soon-page.component').then(
-        (module) => module.ComingSoonPageComponent,
+      import('./pages/library/library-page.component').then(
+        (module) => module.LibraryPageComponent,
       ),
-    data: { title: 'Biblioteca de entrenamientos' },
     title: 'Biblioteca · MyFitnessPlanner',
+  },
+  {
+    path: 'library/new',
+    loadComponent: () =>
+      import('./pages/training-session-form-page/training-session-form-page.component').then(
+        (module) => module.TrainingSessionFormPageComponent,
+      ),
+    data: { kind: 'template' },
+    title: 'Nueva plantilla · MyFitnessPlanner',
+  },
+  {
+    path: 'library/edit/:id',
+    loadComponent: () =>
+      import('./pages/training-session-form-page/training-session-form-page.component').then(
+        (module) => module.TrainingSessionFormPageComponent,
+      ),
+    data: { kind: 'template' },
+    title: 'Editar plantilla · MyFitnessPlanner',
   },
   {
     path: 'profile',

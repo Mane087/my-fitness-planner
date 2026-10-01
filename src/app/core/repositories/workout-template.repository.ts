@@ -9,6 +9,12 @@ import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
 import { createId, nowIso, parseEntity } from './repository-utils';
 
+export interface WorkoutTemplateFilters {
+  sport?: Sport | null;
+  /** Archived templates are hidden unless requested. */
+  shouldIncludeArchived?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class WorkoutTemplateRepository {
   private readonly indexedDb = inject(IndexedDbService);
@@ -26,6 +32,15 @@ export class WorkoutTemplateRepository {
   async findAllArchived(): Promise<WorkoutTemplateEntity[]> {
     const templates = await this.findAll();
     return templates.filter((template) => template.isArchived);
+  }
+
+  /** Templates sorted by title. The sport uses the `by_sport` index; archived state is a boolean. */
+  async findFiltered(filters: WorkoutTemplateFilters = {}): Promise<WorkoutTemplateEntity[]> {
+    const templates = filters.sport ? await this.findBySport(filters.sport) : await this.findAll();
+
+    return templates
+      .filter((template) => filters.shouldIncludeArchived || !template.isArchived)
+      .sort((left, right) => left.title.localeCompare(right.title, 'es'));
   }
 
   findBySport(sport: Sport): Promise<WorkoutTemplateEntity[]> {

@@ -3,11 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import type { AthleteProfileEntity } from '../src/app/core/domain/schemas/athlete-profile.schema';
 import type { ScheduledWorkoutEntity } from '../src/app/core/domain/schemas/scheduled-workout.schema';
 import type { TrainingZoneSetEntity } from '../src/app/core/domain/schemas/training-zone-set.schema';
+import type { WorkoutTemplateEntity } from '../src/app/core/domain/schemas/workout-template.schema';
 import { IntensityMetric, Sport, WorkoutCategory } from '../src/app/core/domain/workout.enums';
 import type { TrainingSessionFormValue } from '../src/app/core/models/training-session-form.model';
 import { AthleteProfileRepository } from '../src/app/core/repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../src/app/core/repositories/scheduled-workout.repository';
 import { TrainingZoneSetRepository } from '../src/app/core/repositories/training-zone-set.repository';
+import { WorkoutTemplateRepository } from '../src/app/core/repositories/workout-template.repository';
 import { TrainingSessionFormFacade } from '../src/app/pages/training-session-form-page/training-session-form.facade';
 import {
   cyclingDefinition,
@@ -16,6 +18,7 @@ import {
   interval,
   repeat,
   scheduledWorkout,
+  workoutTemplate,
 } from './domain/fixtures';
 
 describe('TrainingSessionFormFacade', () => {
@@ -23,6 +26,7 @@ describe('TrainingSessionFormFacade', () => {
   let workoutRepo: jest.Mocked<Pick<ScheduledWorkoutRepository, 'findById' | 'create' | 'update'>>;
   let zoneSetRepo: jest.Mocked<Pick<TrainingZoneSetRepository, 'findAll'>>;
   let profileRepo: jest.Mocked<Pick<AthleteProfileRepository, 'getActiveProfile'>>;
+  let templateRepo: jest.Mocked<Pick<WorkoutTemplateRepository, 'findById' | 'create' | 'update'>>;
 
   const mockZoneSets: TrainingZoneSetEntity[] = [heartRateZoneSet()];
 
@@ -34,6 +38,7 @@ describe('TrainingSessionFormFacade', () => {
     };
     zoneSetRepo = { findAll: jest.fn() };
     profileRepo = { getActiveProfile: jest.fn() };
+    templateRepo = { findById: jest.fn(), create: jest.fn(), update: jest.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -41,6 +46,7 @@ describe('TrainingSessionFormFacade', () => {
         { provide: ScheduledWorkoutRepository, useValue: workoutRepo },
         { provide: TrainingZoneSetRepository, useValue: zoneSetRepo },
         { provide: AthleteProfileRepository, useValue: profileRepo },
+        { provide: WorkoutTemplateRepository, useValue: templateRepo },
       ],
     });
 
@@ -440,6 +446,111 @@ describe('TrainingSessionFormFacade', () => {
       expect(result.sourceTemplateId).toBe('template-99');
       expect(workoutRepo.update).toHaveBeenCalledTimes(1);
       expect(workoutRepo.create).not.toHaveBeenCalled();
+    });
+  });
+
+  /* ───────── plantillas ───────── */
+
+  describe('plantillas', () => {
+    it('carga una plantilla sin fecha para editarla', async () => {
+      profileRepo.getActiveProfile.mockResolvedValue(buildProfile());
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
+      templateRepo.findById.mockResolvedValue(
+        workoutTemplate({ id: 'tpl-1', title: 'Umbral 3x10', plannedDurationSeconds: 3600 }),
+      );
+
+      const state = await facade.loadEditTemplateForm('tpl-1');
+
+      expect(state.mode).toBe('edit');
+      expect(state.selectedDate).toBe('');
+      expect(state.formValue).toMatchObject({
+        id: 'tpl-1',
+        title: 'Umbral 3x10',
+        scheduledDate: '',
+        estimatedDurationMinutes: 60,
+      });
+      expect(state.formValue.steps).toEqual(cyclingDefinition().steps);
+    });
+
+    it('lanza error si la plantilla no existe', async () => {
+      profileRepo.getActiveProfile.mockResolvedValue(null);
+      zoneSetRepo.findAll.mockResolvedValue(mockZoneSets);
+      templateRepo.findById.mockResolvedValue(null);
+
+      await expect(facade.loadEditTemplateForm('missing')).rejects.toThrow(
+        'La plantilla no existe.',
+      );
+    });
+
+    it('no exige fecha al validar una plantilla', () => {
+      const value = buildValue({ scheduledDate: '' });
+
+      expect(facade.validate(value, mockZoneSets, 'template')).toEqual([]);
+      expect(facade.validate(value, mockZoneSets)).toContain('La fecha es requerida.');
+    });
+
+    it('crea una plantilla activa con la definición del formulario', async () => {
+      templateRepo.create.mockImplementation(async (template: WorkoutTemplateEntity) => template);
+
+      const template = await facade.saveTemplate(
+        buildValue({ scheduledDate: '', objective: ' Umbral ' }),
+        mockZoneSets,
+      );
+
+      expect(template).toMatchObject({
+        title: 'Entrenamiento de prueba',
+        objective: 'Umbral',
+        isArchived: false,
+        plannedDurationSeconds: 2760,
+      });
+      expect(template).not.toHaveProperty('scheduledDate');
+      expect(template).not.toHaveProperty('status');
+      expect(templateRepo.update).not.toHaveBeenCalled();
+    });
+
+    it('actualiza una plantilla conservando su estado de archivo y su fecha de creación', async () => {
+      const existing = workoutTemplate({
+        id: 'tpl-1',
+        isArchived: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      templateRepo.findById.mockResolvedValue(existing);
+      templateRepo.update.mockImplementation(async (template: WorkoutTemplateEntity) => template);
+
+      const template = await facade.saveTemplate(
+        buildValue({ id: 'tpl-1', scheduledDate: '', title: 'Renombrada' }),
+        mockZoneSets,
+      );
+
+      expect(template).toMatchObject({
+        id: 'tpl-1',
+        title: 'Renombrada',
+        isArchived: true,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      expect(templateRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('guarda un entrenamiento como plantilla nueva sin tocar el entrenamiento', async () => {
+      templateRepo.create.mockImplementation(async (template: WorkoutTemplateEntity) => template);
+
+      const template = await facade.saveAsTemplate(
+        buildValue({ id: 'workout-1', scheduledDate: '2026-07-25' }),
+        mockZoneSets,
+      );
+
+      expect(template.id).not.toBe('workout-1');
+      expect(template.steps).toEqual(cyclingDefinition().steps);
+      expect(templateRepo.findById).not.toHaveBeenCalled();
+      expect(workoutRepo.update).not.toHaveBeenCalled();
+      expect(workoutRepo.create).not.toHaveBeenCalled();
+    });
+
+    it('no guarda la plantilla cuando la validación falla', async () => {
+      await expect(facade.saveAsTemplate(buildValue({ title: '' }), mockZoneSets)).rejects.toThrow(
+        'El título del entrenamiento es requerido.',
+      );
+      expect(templateRepo.create).not.toHaveBeenCalled();
     });
   });
 });
