@@ -1,5 +1,5 @@
-<main class="min-h-screen bg-slate-900 py-6 text-slate-50">
-  <section class="mx-auto flex max-w-3/4 flex-col gap-4" aria-labelledby="calendar-title">
+<main class="min-h-screen bg-slate-900 px-4 py-6 text-slate-50">
+  <section class="mx-auto flex w-full flex-col gap-4 lg:max-w-3/4" aria-labelledby="calendar-title">
     @if (successMessage()) {
       <p
         class="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-4 text-emerald-100"
@@ -91,7 +91,8 @@
           </dl>
         </div>
 
-        <div class="">
+        <!-- The month grid keeps its width and scrolls inside this box on narrow screens. -->
+        <div class="overflow-x-auto" data-testid="calendar-grid-scroll">
           <div class="min-w-[760px]">
             <div class="calendar-grid">
               @for (weekday of month.weekdays; track weekday) {
@@ -171,9 +172,16 @@
                               Tiempo: {{ workout.durationLabel }}
                             }
                           </span>
-                          <span class="block text-[0.7rem] text-slate-300"
-                            >Distancia: {{ workout.distanceLabel }}</span
-                          >
+                          <span class="block text-[0.7rem] text-slate-300">
+                            @if (workout.actualDistanceLabel && workout.hasPlannedDistance) {
+                              Distancia: {{ workout.actualDistanceLabel }} de
+                              {{ workout.distanceLabel }}
+                            } @else if (workout.actualDistanceLabel) {
+                              Distancia: {{ workout.actualDistanceLabel }}
+                            } @else {
+                              Distancia: {{ workout.distanceLabel }}
+                            }
+                          </span>
                         </button>
                       }
 

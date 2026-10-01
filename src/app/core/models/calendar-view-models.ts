@@ -15,6 +15,9 @@ export interface CalendarWorkoutCardViewModel {
   statusLabel: string;
   /** Actual duration, only for completed workouts. */
   actualDurationLabel: string | null;
+  /** Actual distance, only for completed workouts with a recorded or planned distance. */
+  actualDistanceLabel: string | null;
+  hasPlannedDistance: boolean;
 }
 
 export interface CalendarDayViewModel {

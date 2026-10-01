@@ -338,4 +338,25 @@ describe('WorkoutDetailModalComponent', () => {
     await click('Cerrar detalle');
     expect(host.closedCount).toBe(1);
   });
+
+  it('cierra el detalle con Escape, salvo mientras se guarda un cambio de estado', async () => {
+    setToday('2026-10-01');
+    let finishSkip: (workout: ReturnType<typeof scheduledWorkout>) => void = () => undefined;
+    completionService.skip.mockImplementation(
+      () => new Promise((resolve) => (finishSkip = resolve)),
+    );
+    host.workout.set(scheduledWorkout());
+    await render();
+    const pressEscape = () =>
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+
+    button('Omitir').click();
+    pressEscape();
+    expect(host.closedCount).toBe(0);
+
+    finishSkip(scheduledWorkout({ status: 'skipped' }));
+    await render();
+    pressEscape();
+    expect(host.closedCount).toBe(1);
+  });
 });

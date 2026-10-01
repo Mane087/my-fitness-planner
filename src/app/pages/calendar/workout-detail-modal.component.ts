@@ -170,6 +170,11 @@ export class WorkoutDetailModalComponent {
     if (workout) this.edit.emit(workout.id);
   }
 
+  /** Escape or a click outside closes the detail, except while a status change is saving. */
+  dismiss(): void {
+    if (!this.isBusy()) this.close();
+  }
+
   close(): void {
     this.view.set('detail');
     this.errors.set([]);

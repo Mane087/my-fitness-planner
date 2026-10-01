@@ -148,6 +148,11 @@ export class CalendarFacade {
 
   private toWorkoutCard(workout: ScheduledWorkoutEntity): CalendarWorkoutCardViewModel {
     const sportLabel = SPORT_LABELS[workout.sport] ?? workout.sport;
+    const completion = workout.status === WorkoutStatus.Completed ? workout.completion : undefined;
+    // A completion without its own values counts the planned ones, as the weekly summary does.
+    const actualMeters = completion
+      ? (completion.distanceMeters ?? workout.plannedDistanceMeters)
+      : undefined;
 
     return {
       id: workout.id,
@@ -166,14 +171,16 @@ export class CalendarFacade {
       colorClass: WORKOUT_CATEGORY_COLOR_CLASSES[workout.category],
       status: workout.status,
       statusLabel: WORKOUT_STATUS_LABELS[workout.status],
-      actualDurationLabel:
-        workout.status === WorkoutStatus.Completed
-          ? this.calendarDate.formatDuration(
-              secondsToMinutes(
-                workout.completion?.durationSeconds ?? workout.plannedDurationSeconds,
-              ),
-            )
+      actualDurationLabel: completion
+        ? this.calendarDate.formatDuration(
+            secondsToMinutes(completion.durationSeconds ?? workout.plannedDurationSeconds),
+          )
+        : null,
+      actualDistanceLabel:
+        actualMeters !== undefined
+          ? this.calendarDate.formatDistance(metersToKm(actualMeters))
           : null,
+      hasPlannedDistance: workout.plannedDistanceMeters !== undefined,
     };
   }
 

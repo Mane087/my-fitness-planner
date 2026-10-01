@@ -1,4 +1,8 @@
-<app-modal [showModal]="workout() !== null" labelledBy="workout-detail-title">
+<app-modal
+  [showModal]="workout() !== null"
+  labelledBy="workout-detail-title"
+  (dismissed)="dismiss()"
+>
   @if (workout(); as current) {
     <div class="flex items-start justify-between gap-4">
       <div>

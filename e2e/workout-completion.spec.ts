@@ -34,18 +34,22 @@ test.describe('Workout completion', () => {
     await dialog.getByRole('button', { name: 'Completar' }).click();
     await expect(dialog.getByLabel('Duración real (min)')).toHaveValue('60');
     await dialog.getByLabel('Duración real (min)').fill('50');
+    await dialog.getByLabel('Distancia real (km)').fill('25');
     await dialog.getByLabel('RPE (1-10)').fill('7');
     await dialog.getByRole('radio', { name: '4' }).check({ force: true });
     await dialog.getByLabel('Notas').fill('Viento en contra');
     await dialog.getByRole('button', { name: 'Guardar registro' }).click();
 
     await expect(dialog.getByTestId('workout-status')).toHaveText('Completado');
-    await expect(dialog.getByTestId('workout-actual')).toHaveText('50 min');
+    await expect(dialog.getByTestId('workout-actual')).toHaveText('50 min · 25 km');
     await expect(dialog).toContainText('Viento en contra');
-    await dialog.getByRole('button', { name: 'Cerrar detalle' }).click();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
 
     const card = page.getByRole('button', { name: 'Rodada de fondo, Completado' });
     await expect(card).toContainText('Tiempo: 50 min de 1 h');
+    // The workout has no planned distance, so the card shows only the actual one.
+    await expect(card).toContainText('Distancia: 25 km');
     await expect(total).toContainText('1 de 1');
     await expect(total).toContainText('50 min');
     await expect(total).toContainText('83 %');
@@ -64,7 +68,9 @@ test.describe('Workout completion', () => {
     const dialog = page.getByRole('dialog', { name: 'Rodaje omitido' });
     await dialog.getByRole('button', { name: 'Omitir' }).click();
     await expect(dialog.getByTestId('workout-status')).toHaveText('Omitido');
-    await dialog.getByRole('button', { name: 'Cerrar detalle' }).click();
+    // A click outside the dialog closes it.
+    await page.getByTestId('modal-backdrop').click({ position: { x: 5, y: 5 } });
+    await expect(dialog).toBeHidden();
 
     await expect(page.getByRole('button', { name: 'Rodaje omitido, Omitido' })).toBeVisible();
     await expect(page.getByTestId('summary-total')).toContainText('0 %');

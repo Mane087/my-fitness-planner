@@ -127,6 +127,24 @@ describe('BackupSectionComponent', () => {
     expect(backups.importBackup).not.toHaveBeenCalled();
   });
 
+  it('cancels the pending import with Escape, but not while it is importing', async () => {
+    const pressEscape = () => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+      fixture.detectChanges();
+    };
+    await selectFile('{}');
+    pressEscape();
+    expect(dialog()).toBeNull();
+
+    backups.importBackup.mockImplementation(() => new Promise(() => undefined));
+    await selectFile('{"schemaVersion":2}');
+    button('Importar y reemplazar').click();
+    pressEscape();
+
+    expect(dialog()).not.toBeNull();
+    expect(backups.importBackup).toHaveBeenCalledTimes(1);
+  });
+
   it('shows the validation message of an invalid backup', async () => {
     backups.importBackup.mockImplementation(async () => {
       throw new BackupImportError('El archivo no es un JSON válido.');

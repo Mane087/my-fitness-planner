@@ -163,22 +163,44 @@ describe('CalendarFacade', () => {
     scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
       buildWorkout({
         id: 'done',
+        plannedDistanceMeters: 30000,
         status: 'completed',
-        completion: { completedAt: '2026-05-01T18:00:00.000Z', durationSeconds: 50 * 60 },
+        completion: {
+          completedAt: '2026-05-01T18:00:00.000Z',
+          durationSeconds: 50 * 60,
+          distanceMeters: 27500,
+        },
       }),
       buildWorkout({ id: 'skipped', status: 'skipped' }),
+      buildWorkout({
+        id: 'done-without-distance',
+        status: 'completed',
+        completion: { completedAt: '2026-05-01T18:00:00.000Z' },
+      }),
     ]);
 
     const viewModel = await facade.loadMonth('2026-05-15');
-    const [done, skipped] =
+    const [done, skipped, doneWithoutDistance] =
       viewModel.weeks.flat().find((day) => day.date === '2026-05-01')?.workouts ?? [];
 
     expect(done).toMatchObject({
       statusLabel: 'Completado',
       durationLabel: '1 h',
       actualDurationLabel: '50 min',
+      distanceLabel: '30 km',
+      actualDistanceLabel: '27.5 km',
+      hasPlannedDistance: true,
     });
-    expect(skipped).toMatchObject({ statusLabel: 'Omitido', actualDurationLabel: null });
+    expect(skipped).toMatchObject({
+      statusLabel: 'Omitido',
+      actualDurationLabel: null,
+      actualDistanceLabel: null,
+    });
+    expect(doneWithoutDistance).toMatchObject({
+      actualDurationLabel: '1 h',
+      actualDistanceLabel: null,
+      hasPlannedDistance: false,
+    });
   });
 
   it('formatea el resumen semanal con el inicio de semana del perfil', async () => {
