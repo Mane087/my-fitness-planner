@@ -208,6 +208,16 @@ describe('WorkoutDetailModalComponent', () => {
       expect(alertText()).toBe('El RPE debe estar entre 1 y 10.');
       expect(completionService.complete).not.toHaveBeenCalled();
     });
+
+    it('quita el error del intento anterior al corregir un campo', async () => {
+      await click('Completar');
+      await type(rpeInput(), '11');
+      await click('Guardar registro');
+
+      await type(rpeInput(), '7');
+
+      expect(alertText()).toBe('');
+    });
   });
 
   describe('cuando el entrenamiento es futuro', () => {

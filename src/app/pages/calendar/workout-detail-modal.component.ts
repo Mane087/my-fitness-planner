@@ -129,17 +129,15 @@ export class WorkoutDetailModalComponent {
   }
 
   setNumber(field: 'durationMinutes' | 'distanceKm' | 'rpe', event: Event): void {
-    const value = readNumber(event);
-    this.draft.update((draft) => ({ ...draft, [field]: value }));
+    this.updateDraft({ [field]: readNumber(event) });
   }
 
   setFeeling(feeling: number): void {
-    this.draft.update((draft) => ({ ...draft, feeling }));
+    this.updateDraft({ feeling });
   }
 
   setNotes(event: Event): void {
-    const notes = readText(event);
-    this.draft.update((draft) => ({ ...draft, notes }));
+    this.updateDraft({ notes: readText(event) });
   }
 
   async saveCompletion(): Promise<void> {
@@ -176,6 +174,12 @@ export class WorkoutDetailModalComponent {
     this.view.set('detail');
     this.errors.set([]);
     this.closed.emit();
+  }
+
+  /** Errors belong to the last save attempt, so editing a field clears them. */
+  private updateDraft(change: Partial<CompletionDraft>): void {
+    this.draft.update((draft) => ({ ...draft, ...change }));
+    this.errors.set([]);
   }
 
   private async run(task: () => Promise<ScheduledWorkoutEntity>): Promise<void> {
