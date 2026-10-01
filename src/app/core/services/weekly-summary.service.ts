@@ -1,94 +1,115 @@
 import { inject, Injectable } from '@angular/core';
 
+import type { WeekStartsOn } from '../domain/calendar.enums';
 import type { ScheduledWorkoutEntity } from '../domain/schemas/scheduled-workout.schema';
 import {
   SPORTS,
   WORKOUT_CATEGORIES,
-  WorkoutCategory,
   WorkoutStatus,
   type Sport,
+  type WorkoutCategory,
 } from '../domain/workout.enums';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
-import { addDays, formatDateOnly, parseDateOnly } from './training-calendar.service';
+import { CalendarDateService } from './calendar-date.service';
+
+export interface SummaryTotals {
+  sessions: number;
+  completedSessions: number;
+  skippedSessions: number;
+  plannedSeconds: number;
+  actualSeconds: number;
+  plannedMeters: number;
+  actualMeters: number;
+  /** Actual time divided by planned time, or null when nothing was planned. */
+  compliance: number | null;
+}
+
+export interface SportSummary extends SummaryTotals {
+  sport: Sport;
+}
+
+export interface CategorySummary extends SummaryTotals {
+  category: WorkoutCategory;
+}
 
 export interface WeeklySummary {
   startDate: string;
   endDate: string;
-  totalSessions: number;
-  totalDurationSeconds: number;
-  restDays: number;
-  sessionsByCategory: Record<WorkoutCategory, number>;
-  durationByCategory: Record<WorkoutCategory, number>;
-  sessionsBySport: Record<Sport, number>;
-  durationBySport: Record<Sport, number>;
-  intenseSessions: number;
+  totals: SummaryTotals;
+  /** Only sports with sessions in the week, in the order of `SPORTS`. */
+  bySport: SportSummary[];
+  /** Only categories with sessions in the week, in the order of `WORKOUT_CATEGORIES`. */
+  byCategory: CategorySummary[];
 }
 
-const INTENSE_CATEGORIES: readonly WorkoutCategory[] = [
-  WorkoutCategory.Threshold,
-  WorkoutCategory.Vo2Max,
-  WorkoutCategory.Power,
-];
-
+/**
+ * Planned vs. actual totals of a week. Planned values include every scheduled workout, also the
+ * skipped ones, so skipping lowers the compliance. Actual values come from completed workouts;
+ * a completion without duration or distance counts the planned value.
+ */
 @Injectable({ providedIn: 'root' })
 export class WeeklySummaryService {
   private readonly scheduledWorkoutRepository = inject(ScheduledWorkoutRepository);
+  private readonly calendarDate = inject(CalendarDateService);
 
-  async getWeeklySummary(referenceDate: string): Promise<WeeklySummary> {
-    const weekRange = getWeekRange(referenceDate);
-    const workouts = await this.scheduledWorkoutRepository.findByDateRange(
-      weekRange.startDate,
-      weekRange.endDate,
-    );
-    const countedWorkouts = workouts.filter((workout) => workout.status === WorkoutStatus.Planned);
-    const sessionsByCategory = createRecord(WORKOUT_CATEGORIES);
-    const durationByCategory = createRecord(WORKOUT_CATEGORIES);
-    const sessionsBySport = createRecord(SPORTS);
-    const durationBySport = createRecord(SPORTS);
-    const activeDays = new Set(countedWorkouts.map((workout) => workout.scheduledDate));
-
-    for (const workout of countedWorkouts) {
-      sessionsByCategory[workout.category] += 1;
-      durationByCategory[workout.category] += workout.plannedDurationSeconds;
-      sessionsBySport[workout.sport] += 1;
-      durationBySport[workout.sport] += workout.plannedDurationSeconds;
-    }
+  async getWeeklySummary(
+    referenceDate: string,
+    weekStartsOn: WeekStartsOn,
+  ): Promise<WeeklySummary> {
+    const { startDate, endDate } = this.calendarDate.getWeekRange(referenceDate, weekStartsOn);
+    const workouts = await this.scheduledWorkoutRepository.findByDateRange(startDate, endDate);
 
     return {
-      startDate: weekRange.startDate,
-      endDate: weekRange.endDate,
-      totalSessions: countedWorkouts.length,
-      totalDurationSeconds: countedWorkouts.reduce(
-        (total, workout) => total + workout.plannedDurationSeconds,
-        0,
-      ),
-      restDays: 7 - activeDays.size,
-      sessionsByCategory,
-      durationByCategory,
-      sessionsBySport,
-      durationBySport,
-      intenseSessions: countedWorkouts.filter(isIntenseWorkout).length,
+      startDate,
+      endDate,
+      totals: summarize(workouts),
+      bySport: SPORTS.map((sport) => ({
+        sport,
+        ...summarize(workouts.filter((workout) => workout.sport === sport)),
+      })).filter((summary) => summary.sessions > 0),
+      byCategory: WORKOUT_CATEGORIES.map((category) => ({
+        category,
+        ...summarize(workouts.filter((workout) => workout.category === category)),
+      })).filter((summary) => summary.sessions > 0),
     };
   }
 }
 
-function getWeekRange(referenceDate: string): { startDate: string; endDate: string } {
-  const date = parseDateOnly(referenceDate);
-  const day = date.getUTCDay();
-  const daysFromMonday = day === 0 ? 6 : day - 1;
-  const startDate = addDays(date, -daysFromMonday);
-  const endDate = addDays(startDate, 6);
+function summarize(workouts: readonly ScheduledWorkoutEntity[]): SummaryTotals {
+  const totals = workouts.reduce(
+    (current, workout) => {
+      const completion =
+        workout.status === WorkoutStatus.Completed ? workout.completion : undefined;
+
+      return {
+        ...current,
+        sessions: current.sessions + 1,
+        completedSessions: current.completedSessions + (completion ? 1 : 0),
+        skippedSessions:
+          current.skippedSessions + (workout.status === WorkoutStatus.Skipped ? 1 : 0),
+        plannedSeconds: current.plannedSeconds + workout.plannedDurationSeconds,
+        plannedMeters: current.plannedMeters + (workout.plannedDistanceMeters ?? 0),
+        actualSeconds:
+          current.actualSeconds +
+          (completion ? (completion.durationSeconds ?? workout.plannedDurationSeconds) : 0),
+        actualMeters:
+          current.actualMeters +
+          (completion ? (completion.distanceMeters ?? workout.plannedDistanceMeters ?? 0) : 0),
+      };
+    },
+    {
+      sessions: 0,
+      completedSessions: 0,
+      skippedSessions: 0,
+      plannedSeconds: 0,
+      actualSeconds: 0,
+      plannedMeters: 0,
+      actualMeters: 0,
+    },
+  );
 
   return {
-    startDate: formatDateOnly(startDate),
-    endDate: formatDateOnly(endDate),
+    ...totals,
+    compliance: totals.plannedSeconds > 0 ? totals.actualSeconds / totals.plannedSeconds : null,
   };
-}
-
-function createRecord<Key extends string>(keys: readonly Key[]): Record<Key, number> {
-  return Object.fromEntries(keys.map((key) => [key, 0])) as Record<Key, number>;
-}
-
-function isIntenseWorkout(workout: ScheduledWorkoutEntity): boolean {
-  return INTENSE_CATEGORIES.includes(workout.category);
 }

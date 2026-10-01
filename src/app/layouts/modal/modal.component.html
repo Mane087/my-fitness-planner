@@ -1,6 +1,10 @@
 @if (showModal()) {
   <div class="fixed inset-0 z-50 bg-black/50" aria-hidden="true"></div>
-  <div class="fixed inset-0 z-50 flex items-center justify-center px-4">
+  <div
+    #backdrop
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    data-testid="modal-backdrop"
+  >
     <div
       role="dialog"
       aria-modal="true"

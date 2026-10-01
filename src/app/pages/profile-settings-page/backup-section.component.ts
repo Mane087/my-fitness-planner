@@ -73,6 +73,8 @@ export class BackupSectionComponent {
   }
 
   cancelImport(): void {
+    // The import replaces the whole database; once it started it cannot be cancelled.
+    if (this.isImporting()) return;
     this.pendingImport.set(null);
   }
 

@@ -1,5 +1,5 @@
-<main class="min-h-screen bg-slate-900 py-6 text-slate-50">
-  <section class="mx-auto flex max-w-3/4 flex-col gap-4" aria-labelledby="calendar-title">
+<main class="min-h-screen bg-slate-900 px-4 py-6 text-slate-50">
+  <section class="mx-auto flex w-full flex-col gap-4 lg:max-w-3/4" aria-labelledby="calendar-title">
     @if (successMessage()) {
       <p
         class="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-4 text-emerald-100"
@@ -91,7 +91,8 @@
           </dl>
         </div>
 
-        <div class="">
+        <!-- The month grid keeps its width and scrolls inside this box on narrow screens. -->
+        <div class="overflow-x-auto" data-testid="calendar-grid-scroll">
           <div class="min-w-[760px]">
             <div class="calendar-grid">
               @for (weekday of month.weekdays; track weekday) {
@@ -138,21 +139,49 @@
                           type="button"
                           class="workout-card border-l-4 text-left"
                           [ngClass]="workout.colorClass"
+                          [class.opacity-60]="workout.status === 'skipped'"
+                          [attr.aria-label]="workout.title + ', ' + workout.statusLabel"
                           (click)="openWorkout(workout.id)"
                         >
                           <span
                             class="text-[0.65rem] font-bold uppercase tracking-wide text-slate-400"
                             >{{ workout.sportLabel }} · {{ workout.categoryLabel }}</span
                           >
-                          <span class="block truncate text-xs font-semibold text-slate-50">{{
-                            workout.title
-                          }}</span>
-                          <span class="block text-[0.7rem] text-slate-300"
-                            >Tiempo: {{ workout.durationLabel }}</span
+                          <span
+                            class="block truncate text-xs font-semibold text-slate-50"
+                            [class.line-through]="workout.status === 'skipped'"
+                            >{{ workout.title }}</span
                           >
-                          <span class="block text-[0.7rem] text-slate-300"
-                            >Distancia: {{ workout.distanceLabel }}</span
-                          >
+                          @if (workout.status !== 'planned') {
+                            <span
+                              class="mt-0.5 inline-block rounded-full px-1.5 text-[0.65rem] font-bold"
+                              [ngClass]="
+                                workout.status === 'completed'
+                                  ? 'bg-emerald-900 text-emerald-200'
+                                  : 'bg-slate-700 text-slate-200'
+                              "
+                              >{{ workout.status === 'completed' ? '✓ ' : ''
+                              }}{{ workout.statusLabel }}</span
+                            >
+                          }
+                          <span class="block text-[0.7rem] text-slate-300">
+                            @if (workout.actualDurationLabel) {
+                              Tiempo: {{ workout.actualDurationLabel }} de
+                              {{ workout.durationLabel }}
+                            } @else {
+                              Tiempo: {{ workout.durationLabel }}
+                            }
+                          </span>
+                          <span class="block text-[0.7rem] text-slate-300">
+                            @if (workout.actualDistanceLabel && workout.hasPlannedDistance) {
+                              Distancia: {{ workout.actualDistanceLabel }} de
+                              {{ workout.distanceLabel }}
+                            } @else if (workout.actualDistanceLabel) {
+                              Distancia: {{ workout.actualDistanceLabel }}
+                            } @else {
+                              Distancia: {{ workout.distanceLabel }}
+                            }
+                          </span>
                         </button>
                       }
 
@@ -170,5 +199,114 @@
         </div>
       </section>
     }
+
+    <section
+      class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30 sm:p-5"
+      aria-labelledby="weekly-summary-title"
+      data-testid="weekly-summary"
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <h2 id="weekly-summary-title" class="text-xl font-bold">
+          Resumen semanal
+          @if (weeklySummary(); as summary) {
+            <span class="font-normal text-slate-300">· {{ summary.rangeLabel }}</span>
+          }
+        </h2>
+        <div class="flex gap-2">
+          <button
+            type="button"
+            class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+            aria-label="Semana anterior"
+            (click)="goToPreviousWeek()"
+          >
+            ‹
+          </button>
+          <button
+            type="button"
+            class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
+            aria-label="Semana siguiente"
+            (click)="goToNextWeek()"
+          >
+            ›
+          </button>
+        </div>
+      </div>
+
+      @if (weeklySummaryError()) {
+        <p class="mt-4 text-red-200" role="alert">{{ weeklySummaryError() }}</p>
+      } @else if (weeklySummary(); as summary) {
+        <div class="mt-4 overflow-x-auto">
+          <table class="w-full min-w-160 text-left text-sm">
+            <caption class="sr-only">
+              Planeado contra realizado del
+              {{
+                summary.rangeLabel
+              }}
+            </caption>
+            <thead class="text-slate-400">
+              <tr>
+                <th scope="col" class="py-2 pr-3">Grupo</th>
+                <th scope="col" class="py-2 pr-3">Completados</th>
+                <th scope="col" class="py-2 pr-3">Tiempo planeado</th>
+                <th scope="col" class="py-2 pr-3">Tiempo real</th>
+                <th scope="col" class="py-2 pr-3">Distancia planeada</th>
+                <th scope="col" class="py-2 pr-3">Distancia real</th>
+                <th scope="col" class="py-2">Cumplimiento</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (
+                group of [
+                  { title: 'Por deporte', rows: summary.bySport },
+                  { title: 'Por categoría', rows: summary.byCategory },
+                ];
+                track group.title
+              ) {
+                @if (group.rows.length > 0) {
+                  <tr>
+                    <th
+                      scope="rowgroup"
+                      colspan="7"
+                      class="pt-3 text-xs font-bold uppercase tracking-wide text-slate-500"
+                    >
+                      {{ group.title }}
+                    </th>
+                  </tr>
+                  @for (row of group.rows; track row.key) {
+                    <tr class="border-t border-slate-800" [attr.data-testid]="'summary-' + row.key">
+                      <th scope="row" class="py-2 pr-3 font-semibold">{{ row.label }}</th>
+                      <td class="py-2 pr-3">{{ row.sessionsLabel }}</td>
+                      <td class="py-2 pr-3">{{ row.plannedDurationLabel }}</td>
+                      <td class="py-2 pr-3">{{ row.actualDurationLabel }}</td>
+                      <td class="py-2 pr-3">{{ row.plannedDistanceLabel }}</td>
+                      <td class="py-2 pr-3">{{ row.actualDistanceLabel }}</td>
+                      <td class="py-2">{{ row.complianceLabel }}</td>
+                    </tr>
+                  }
+                }
+              }
+            </tbody>
+            <tfoot>
+              <tr class="border-t-2 border-slate-600 font-bold" data-testid="summary-total">
+                <th scope="row" class="py-2 pr-3">{{ summary.totals.label }}</th>
+                <td class="py-2 pr-3">{{ summary.totals.sessionsLabel }}</td>
+                <td class="py-2 pr-3">{{ summary.totals.plannedDurationLabel }}</td>
+                <td class="py-2 pr-3">{{ summary.totals.actualDurationLabel }}</td>
+                <td class="py-2 pr-3">{{ summary.totals.plannedDistanceLabel }}</td>
+                <td class="py-2 pr-3">{{ summary.totals.actualDistanceLabel }}</td>
+                <td class="py-2">{{ summary.totals.complianceLabel }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+    </section>
   </section>
+
+  <app-workout-detail-modal
+    [workout]="selectedWorkout()"
+    (changed)="onWorkoutChanged($event)"
+    (edit)="editWorkout($event)"
+    (closed)="closeWorkout()"
+  />
 </main>

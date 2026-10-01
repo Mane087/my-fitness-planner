@@ -156,6 +156,95 @@ describe('CalendarFacade', () => {
     expect(may2?.workouts[0].sportLabel).toBe('Ciclismo Ruta');
     expect(may2?.workouts[0].categoryLabel).toBe('VO2 máx');
   });
+
+  it('muestra el estado y el tiempo real de los entrenamientos completados', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'done',
+        plannedDistanceMeters: 30000,
+        status: 'completed',
+        completion: {
+          completedAt: '2026-05-01T18:00:00.000Z',
+          durationSeconds: 50 * 60,
+          distanceMeters: 27500,
+        },
+      }),
+      buildWorkout({ id: 'skipped', status: 'skipped' }),
+      buildWorkout({
+        id: 'done-without-distance',
+        status: 'completed',
+        completion: { completedAt: '2026-05-01T18:00:00.000Z' },
+      }),
+    ]);
+
+    const viewModel = await facade.loadMonth('2026-05-15');
+    const [done, skipped, doneWithoutDistance] =
+      viewModel.weeks.flat().find((day) => day.date === '2026-05-01')?.workouts ?? [];
+
+    expect(done).toMatchObject({
+      statusLabel: 'Completado',
+      durationLabel: '1 h',
+      actualDurationLabel: '50 min',
+      distanceLabel: '30 km',
+      actualDistanceLabel: '27.5 km',
+      hasPlannedDistance: true,
+    });
+    expect(skipped).toMatchObject({
+      statusLabel: 'Omitido',
+      actualDurationLabel: null,
+      actualDistanceLabel: null,
+    });
+    expect(doneWithoutDistance).toMatchObject({
+      actualDurationLabel: '1 h',
+      actualDistanceLabel: null,
+      hasPlannedDistance: false,
+    });
+  });
+
+  it('formatea el resumen semanal con el inicio de semana del perfil', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue({
+      ...buildProfile(),
+      weekStartsOn: WeekStartsOn.Sunday,
+    });
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'done',
+        scheduledDate: '2026-05-03',
+        plannedDistanceMeters: 30000,
+        status: 'completed',
+        completion: { completedAt: '2026-05-03T18:00:00.000Z', durationSeconds: 45 * 60 },
+      }),
+      buildWorkout({ id: 'planned', scheduledDate: '2026-05-04', category: WorkoutCategory.Tempo }),
+    ]);
+
+    const summary = await facade.loadWeeklySummary('2026-05-06');
+
+    // 2026-05-06 es miércoles; con inicio en domingo la semana va del 3 al 9 de mayo.
+    expect(scheduledWorkoutRepository.findByDateRange).toHaveBeenCalledWith(
+      '2026-05-03',
+      '2026-05-09',
+    );
+    expect(summary.rangeLabel).toBe('3 may al 9 may');
+    expect(summary.totals).toEqual({
+      key: 'total',
+      label: 'Total',
+      sessionsLabel: '1 de 2',
+      plannedDurationLabel: '2 h',
+      actualDurationLabel: '45 min',
+      plannedDistanceLabel: '30 km',
+      actualDistanceLabel: '30 km',
+      complianceLabel: '38 %',
+    });
+    expect(summary.bySport.map((row) => row.label)).toEqual(['Ciclismo']);
+    expect(summary.byCategory.map((row) => row.label)).toEqual(['Resistencia', 'Tempo']);
+  });
+
+  it('desplaza la semana de referencia', () => {
+    expect(facade.shiftWeek('2026-05-06', -1)).toBe('2026-04-29');
+  });
 });
 
 function buildProfile(): AthleteProfileEntity {

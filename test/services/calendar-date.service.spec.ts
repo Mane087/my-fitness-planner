@@ -59,12 +59,42 @@ describe('CalendarDateService', () => {
   });
 
   it('detecta la fecha actual', () => {
-    const today: string = service.formatDateOnly(new Date());
+    const today = service.today();
 
-    expect((service.isToday as (date: string) => boolean)(today)).toBe(true);
-    expect((service.isToday as (date: string) => boolean)('2026-05-01')).toBe(
-      today === '2026-05-01',
-    );
+    expect(service.isToday(today)).toBe(true);
+    expect(service.isToday('2026-05-01')).toBe(today === '2026-05-01');
+  });
+
+  it('calcula hoy con la zona horaria local y no con UTC', () => {
+    // 27 sep 2026 a las 23:30 hora local: en zonas al oeste de UTC ya es 28 sep en UTC.
+    const lateEvening = new Date(2026, 8, 27, 23, 30);
+
+    expect(service.today(lateEvening)).toBe('2026-09-27');
+  });
+
+  it('calcula el rango de la semana según el inicio configurado', () => {
+    // 2026-09-27 es domingo.
+    expect(service.getWeekRange('2026-09-27', WeekStartsOn.Monday)).toEqual({
+      startDate: '2026-09-21',
+      endDate: '2026-09-27',
+    });
+    expect(service.getWeekRange('2026-09-27', WeekStartsOn.Sunday)).toEqual({
+      startDate: '2026-09-27',
+      endDate: '2026-10-03',
+    });
+    expect(service.getWeekRange('2026-10-01', WeekStartsOn.Monday)).toEqual({
+      startDate: '2026-09-28',
+      endDate: '2026-10-04',
+    });
+  });
+
+  it('desplaza fechas entre meses y años', () => {
+    expect(service.shiftDate('2026-12-29', 7)).toBe('2027-01-05');
+    expect(service.shiftDate('2026-03-02', -7)).toBe('2026-02-23');
+  });
+
+  it('formatea fechas cortas en español', () => {
+    expect(service.formatShortDate('2026-10-05')).toBe('5 oct');
   });
 
   it('detecta si una fecha pertenece al mismo mes', () => {

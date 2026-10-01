@@ -153,7 +153,11 @@
   }
 </section>
 
-<app-modal [showModal]="pendingAction() !== null" [labelledBy]="idPrefix() + '-confirm-title'">
+<app-modal
+  [showModal]="pendingAction() !== null"
+  [labelledBy]="idPrefix() + '-confirm-title'"
+  (dismissed)="cancelPendingAction()"
+>
   @if (pendingAction() === 'regenerate') {
     <h3 [id]="idPrefix() + '-confirm-title'" class="text-xl font-bold">
       ¿Recalcular las zonas de {{ title() }}?

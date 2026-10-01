@@ -14,6 +14,7 @@ function stepGroup(page: Page | Locator, name: string): Locator {
 async function openSavedWorkout(page: Page, title: string): Promise<void> {
   await expect(page).toHaveURL(/\/calendar\?.*saved=created/);
   await page.getByRole('button', { name: new RegExp(title) }).click();
+  await page.getByRole('dialog', { name: title }).getByRole('button', { name: 'Editar' }).click();
   await expect(page.getByRole('heading', { level: 1, name: 'Editar entrenamiento' })).toBeVisible();
 }
 
