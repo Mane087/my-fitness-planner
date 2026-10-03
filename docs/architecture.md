@@ -80,7 +80,17 @@ Como el perfil por defecto siempre existe después de la inicialización, la pá
 
 ## Navegación
 
-`AppShellComponent` (`layouts/app-shell/`) envuelve todas las rutas con la barra de navegación principal: Calendario, Biblioteca y Perfil. La ruta `/library` usa `ComingSoonPageComponent` hasta que exista la biblioteca de plantillas (#17); el título llega por `data` de la ruta gracias a `withComponentInputBinding()`.
+`AppShellComponent` (`layouts/app-shell/`) envuelve todas las rutas con la barra de navegación principal: Calendario, Biblioteca y Perfil. El título de cada página llega por `data` de la ruta gracias a `withComponentInputBinding()`.
+
+## Calendario
+
+El calendario tiene dos vistas, mes y semana. La vista elegida se guarda en `AppSettings.calendarDefaultView` y es la que se abre la siguiente vez. En la vista semanal, el resumen semanal sigue a la semana visible; en la vista mensual, el resumen tiene su propia navegación.
+
+Mover y copiar entrenamientos (`TrainingCalendarService.moveWorkout` y `copyWorkout`, a través de `CalendarFacade`):
+
+- En la vista semanal, con el mouse, se arrastra la tarjeta a otro día con drag & drop nativo de HTML5. Si se mantiene Ctrl o Alt al soltarla, se copia en lugar de moverse. No se usa Angular CDK para no agregar una dependencia: el drag & drop nativo no funciona bien en pantallas táctiles, pero el caso táctil ya se cubre con las acciones del detalle.
+- En cualquier vista, con teclado o pantalla táctil, el detalle del entrenamiento tiene las acciones "Mover a…" y "Copiar a…" con un selector de fecha.
+- Mover un entrenamiento completado pide confirmación y conserva su registro de ejecución. La copia siempre se crea como planeada, con un `id` nuevo y sin `completion`.
 
 ## Migraciones
 

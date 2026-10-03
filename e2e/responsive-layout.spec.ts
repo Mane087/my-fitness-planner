@@ -28,6 +28,11 @@ test.describe('Phone layout', () => {
     }));
     expect(gridWidths.content).toBeGreaterThan(gridWidths.visible);
 
+    // The week view stacks the days instead of scrolling.
+    await page.getByRole('button', { name: 'Semana', exact: true }).click();
+    await expect(page.getByTestId('week-day-2026-09-29')).toBeVisible();
+    await expectNoHorizontalScroll(page);
+
     await page.goto('/calendar/new?date=2026-09-29');
     await expect(page.getByRole('button', { name: 'Agregar intervalo' })).toBeVisible();
     await expectNoHorizontalScroll(page);

@@ -50,6 +50,27 @@
           completado de todos modos?
         </p>
       }
+      @case ('relocate') {
+        <label class="mt-5 flex flex-col gap-1" for="relocation-date">
+          <span class="font-semibold">{{
+            relocationMode() === 'move' ? 'Mover al día' : 'Copiar al día'
+          }}</span>
+          <input
+            id="relocation-date"
+            class="rounded-lg border border-slate-300 px-3 py-2"
+            type="date"
+            [value]="relocationDate()"
+            (input)="setRelocationDate($event)"
+          />
+        </label>
+        <p class="mt-2 text-sm text-slate-600">
+          @if (relocationMode() === 'move') {
+            El entrenamiento cambia de día y conserva su estado.
+          } @else {
+            La copia se crea como planeada, sin registro de ejecución.
+          }
+        </p>
+      }
       @case ('complete') {
         <form
           class="mt-5 grid gap-4 sm:grid-cols-2"
@@ -171,6 +192,36 @@
             (click)="startCompletion()"
           >
             {{ isCompleted() ? 'Actualizar registro' : 'Completar' }}
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 font-semibold sm:order-first"
+            (click)="startRelocation('move')"
+          >
+            Mover a…
+          </button>
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 font-semibold sm:order-first"
+            (click)="startRelocation('copy')"
+          >
+            Copiar a…
+          </button>
+        }
+        @case ('relocate') {
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 px-4 py-2 font-semibold"
+            (click)="backToDetail()"
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white"
+            (click)="confirmRelocation()"
+          >
+            {{ relocationMode() === 'move' ? 'Mover' : 'Copiar' }}
           </button>
         }
         @case ('confirm-future') {

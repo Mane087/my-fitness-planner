@@ -50,6 +50,36 @@ export interface CalendarMonthViewModel {
   userName: string;
 }
 
+export interface CalendarWeekDayViewModel {
+  date: string;
+  weekdayLabel: string;
+  /** Short date, e.g. `13 may`. */
+  dateLabel: string;
+  isToday: boolean;
+  /** Every workout of the day; the week view has no per-day limit. */
+  workouts: CalendarWorkoutCardViewModel[];
+  plannedLabel: string;
+  /** Actual duration and distance, only when the day has completed workouts. */
+  actualLabel: string | null;
+}
+
+export interface CalendarWeekViewModel {
+  startDate: string;
+  endDate: string;
+  rangeLabel: string;
+  days: CalendarWeekDayViewModel[];
+  userName: string;
+}
+
+export type WorkoutRelocationMode = 'move' | 'copy';
+
+/** A request to move or copy a workout to another day, from drag & drop or the detail actions. */
+export interface WorkoutRelocation {
+  workout: Pick<CalendarWorkoutCardViewModel, 'id' | 'title' | 'status' | 'scheduledDate'>;
+  targetDate: string;
+  mode: WorkoutRelocationMode;
+}
+
 export interface WeeklySummaryRowViewModel {
   key: string;
   label: string;

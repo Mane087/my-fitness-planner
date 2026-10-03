@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed, type ComponentFixture } from '@angular/core/testing';
 
+import type { WorkoutRelocation } from '../../src/app/core/models/calendar-view-models';
 import type { ScheduledWorkoutEntity } from '../../src/app/core/domain/schemas/scheduled-workout.schema';
 import { CalendarDateService } from '../../src/app/core/services/calendar-date.service';
 import { WorkoutCompletionService } from '../../src/app/core/services/workout-completion.service';
@@ -15,6 +16,7 @@ import { scheduledWorkout } from '../domain/fixtures';
       (changed)="changed.push($event)"
       (edit)="edited.push($event)"
       (closed)="closedCount = closedCount + 1"
+      (relocated)="relocated.push($event)"
     />
   `,
 })
@@ -22,6 +24,7 @@ class DetailHostComponent {
   readonly workout = signal<ScheduledWorkoutEntity | null>(null);
   readonly changed: ScheduledWorkoutEntity[] = [];
   readonly edited: string[] = [];
+  readonly relocated: WorkoutRelocation[] = [];
   closedCount = 0;
 }
 
@@ -358,5 +361,94 @@ describe('WorkoutDetailModalComponent', () => {
     await render();
     pressEscape();
     expect(host.closedCount).toBe(1);
+  });
+
+  describe('mover y copiar a otro día', () => {
+    function relocationInput(): HTMLInputElement {
+      return element.querySelector<HTMLInputElement>('#relocation-date')!;
+    }
+
+    beforeEach(async () => {
+      setToday('2026-10-01');
+      host.workout.set(scheduledWorkout({ scheduledDate: '2026-09-28' }));
+      await render();
+    });
+
+    it('abre la vista de mover con la fecha programada como valor inicial', async () => {
+      await click('Mover a…');
+
+      expect(relocationInput().value).toBe('2026-09-28');
+      expect(button('Mover')).not.toBeNull();
+    });
+
+    it('abre la vista de copiar con la fecha programada como valor inicial', async () => {
+      await click('Copiar a…');
+
+      expect(relocationInput().value).toBe('2026-09-28');
+      expect(button('Copiar')).not.toBeNull();
+    });
+
+    it('valida que se seleccione una fecha', async () => {
+      await click('Mover a…');
+      await type(relocationInput(), '');
+
+      await click('Mover');
+
+      expect(alertText()).toBe('Selecciona la fecha.');
+      expect(host.relocated).toEqual([]);
+    });
+
+    it('valida que la fecha de un movimiento sea distinta a la actual', async () => {
+      await click('Mover a…');
+
+      await click('Mover');
+
+      expect(alertText()).toBe('Selecciona una fecha distinta a la actual.');
+      expect(host.relocated).toEqual([]);
+    });
+
+    it('emite relocated en modo mover y regresa al detalle', async () => {
+      await click('Mover a…');
+      await type(relocationInput(), '2026-09-30');
+
+      await click('Mover');
+
+      expect(host.relocated).toEqual([
+        {
+          workout: {
+            id: 'workout-1',
+            title: 'Rodada con intervalos',
+            status: 'planned',
+            scheduledDate: '2026-09-28',
+          },
+          targetDate: '2026-09-30',
+          mode: 'move',
+        },
+      ]);
+      expect(findButton('Mover')).toBeNull();
+      expect(button('Mover a…')).not.toBeNull();
+    });
+
+    it('emite relocated en modo copiar y permite copiar al mismo día', async () => {
+      await click('Copiar a…');
+
+      await click('Copiar');
+
+      expect(alertText()).toBe('');
+      expect(host.relocated).toEqual([
+        expect.objectContaining({ targetDate: '2026-09-28', mode: 'copy' }),
+      ]);
+    });
+
+    it('regresa al detalle sin emitir al cancelar', async () => {
+      await click('Mover a…');
+      await type(relocationInput(), '2026-09-30');
+
+      await click('Cancelar');
+
+      expect(host.relocated).toEqual([]);
+      expect(element.querySelector('#relocation-date')).toBeNull();
+      expect(button('Mover a…')).not.toBeNull();
+    });
   });
 });

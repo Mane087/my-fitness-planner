@@ -75,7 +75,8 @@ export class WeeklySummaryService {
   }
 }
 
-function summarize(workouts: readonly ScheduledWorkoutEntity[]): SummaryTotals {
+/** Totals of any group of workouts, with the planned vs. actual rules of the weekly summary. */
+export function summarize(workouts: readonly ScheduledWorkoutEntity[]): SummaryTotals {
   const totals = workouts.reduce(
     (current, workout) => {
       const completion =

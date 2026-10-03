@@ -4,6 +4,8 @@ import { provideRouter } from '@angular/router';
 import { CalendarPageComponent } from './calendar-page.component';
 import type {
   CalendarMonthViewModel,
+  CalendarWeekViewModel,
+  WorkoutRelocation,
   WeeklySummaryRowViewModel,
   WeeklySummaryViewModel,
 } from '../../core/models/calendar-view-models';
@@ -26,6 +28,12 @@ describe('CalendarPageComponent', () => {
       | 'shiftWeek'
       | 'today'
       | 'findWorkout'
+      | 'loadDefaultView'
+      | 'saveDefaultView'
+      | 'loadWeek'
+      | 'moveWorkout'
+      | 'copyWorkout'
+      | 'formatShortDate'
     >
   >;
 
@@ -72,6 +80,38 @@ describe('CalendarPageComponent', () => {
     ...overrides,
   });
 
+  const buildWeek = (overrides: Partial<CalendarWeekViewModel> = {}): CalendarWeekViewModel => ({
+    startDate: '2026-05-11',
+    endDate: '2026-05-17',
+    rangeLabel: '11 may al 17 may',
+    days: [],
+    userName: 'Usuario',
+    ...overrides,
+  });
+
+  const buildRelocation = (overrides: Partial<WorkoutRelocation> = {}): WorkoutRelocation => ({
+    workout: {
+      id: 'workout-1',
+      title: 'Rodada larga',
+      status: 'planned',
+      scheduledDate: '2026-05-13',
+    },
+    targetDate: '2026-05-20',
+    mode: 'move',
+    ...overrides,
+  });
+
+  const settle = async (): Promise<void> => {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  };
+
+  const buttonByText = (text: string): HTMLButtonElement | undefined =>
+    Array.from<HTMLButtonElement>(fixture.nativeElement.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === text,
+    );
+
   beforeEach(async () => {
     facade = {
       loadMonth: jest.fn(),
@@ -84,7 +124,18 @@ describe('CalendarPageComponent', () => {
       shiftWeek: jest.fn((date: string, weeks: number) => `${date}+${weeks}`),
       today: jest.fn(() => '2026-05-13'),
       findWorkout: jest.fn(),
+      loadDefaultView: jest.fn(),
+      saveDefaultView: jest.fn(),
+      loadWeek: jest.fn(),
+      moveWorkout: jest.fn(),
+      copyWorkout: jest.fn(),
+      formatShortDate: jest.fn((date: string) => date),
     };
+    facade.loadDefaultView.mockResolvedValue('month');
+    facade.saveDefaultView.mockResolvedValue(undefined);
+    facade.loadWeek.mockResolvedValue(buildWeek());
+    facade.moveWorkout.mockResolvedValue(scheduledWorkout());
+    facade.copyWorkout.mockResolvedValue(scheduledWorkout());
     facade.loadWeeklySummary.mockImplementation(async (date: string) => buildWeeklySummary(date));
     facade.loadMonth.mockResolvedValue(buildViewModel());
     facade.goToCurrentMonth.mockResolvedValue(buildViewModel());
@@ -246,5 +297,117 @@ describe('CalendarPageComponent', () => {
     expect(facade.loadMonth).toHaveBeenCalledWith('2026-05-01');
     expect(facade.loadWeeklySummary).toHaveBeenCalledTimes(1);
     expect(fixture.componentInstance.selectedWorkout()?.status).toBe('skipped');
+  });
+
+  it('inicia en la vista semanal cuando la vista por defecto es semana', async () => {
+    facade.loadDefaultView.mockResolvedValue('week');
+    facade.goToCurrentMonth.mockClear();
+    fixture = TestBed.createComponent(CalendarPageComponent);
+
+    await settle();
+
+    expect(facade.loadWeek).toHaveBeenCalledWith('2026-05-13');
+    expect(facade.goToCurrentMonth).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).toContain('11 may al 17 may');
+    expect(buttonByText('Semana')?.getAttribute('aria-pressed')).toBe('true');
+    expect(buttonByText('Mes')?.getAttribute('aria-pressed')).toBe('false');
+  });
+
+  it('guarda la vista y carga la semana al cambiar a Semana', async () => {
+    await settle();
+
+    buttonByText('Semana')?.click();
+    await settle();
+
+    expect(facade.saveDefaultView).toHaveBeenCalledWith('week');
+    expect(facade.loadWeek).toHaveBeenCalledWith('2026-05-13');
+    expect(fixture.nativeElement.textContent).toContain('11 may al 17 may');
+  });
+
+  it('navega la vista semanal con la semana desplazada', async () => {
+    facade.loadDefaultView.mockResolvedValue('week');
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    await settle();
+
+    (fixture.nativeElement.querySelector('[aria-label="Semana siguiente"]') as HTMLElement).click();
+    await settle();
+    expect(facade.loadWeek).toHaveBeenLastCalledWith('2026-05-13+1');
+
+    (fixture.nativeElement.querySelector('[aria-label="Semana anterior"]') as HTMLElement).click();
+    await settle();
+    expect(facade.loadWeek).toHaveBeenLastCalledWith('2026-05-13+1+-1');
+  });
+
+  it('pide confirmación al mover un entrenamiento completado y no lo mueve al cancelar', async () => {
+    await settle();
+
+    await fixture.componentInstance.requestRelocation(
+      buildRelocation({ workout: { ...buildRelocation().workout, status: 'completed' } }),
+    );
+    await settle();
+
+    expect(fixture.nativeElement.textContent).toContain('¿Mover un entrenamiento completado?');
+    buttonByText('Cancelar')?.click();
+    await settle();
+
+    expect(facade.moveWorkout).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('¿Mover un entrenamiento completado?');
+  });
+
+  it('mueve el entrenamiento completado al confirmar', async () => {
+    await settle();
+
+    await fixture.componentInstance.requestRelocation(
+      buildRelocation({ workout: { ...buildRelocation().workout, status: 'completed' } }),
+    );
+    await settle();
+    buttonByText('Mover')?.click();
+    await settle();
+
+    expect(facade.moveWorkout).toHaveBeenCalledWith('workout-1', '2026-05-20');
+    expect(fixture.nativeElement.textContent).toContain('Se movió "Rodada larga" al 2026-05-20.');
+  });
+
+  it('mueve directamente un entrenamiento planeado y muestra el mensaje', async () => {
+    await settle();
+
+    await fixture.componentInstance.requestRelocation(buildRelocation());
+    await settle();
+
+    expect(facade.moveWorkout).toHaveBeenCalledWith('workout-1', '2026-05-20');
+    expect(fixture.nativeElement.textContent).not.toContain('¿Mover un entrenamiento completado?');
+    expect(fixture.nativeElement.textContent).toContain('Se movió "Rodada larga" al 2026-05-20.');
+  });
+
+  it('copia un entrenamiento completado sin pedir confirmación', async () => {
+    await settle();
+
+    await fixture.componentInstance.requestRelocation(
+      buildRelocation({
+        mode: 'copy',
+        workout: { ...buildRelocation().workout, status: 'completed' },
+      }),
+    );
+    await settle();
+
+    expect(facade.copyWorkout).toHaveBeenCalledWith('workout-1', '2026-05-20');
+    expect(facade.moveWorkout).not.toHaveBeenCalled();
+    expect(fixture.nativeElement.textContent).not.toContain('¿Mover un entrenamiento completado?');
+    expect(fixture.nativeElement.textContent).toContain('Se copió "Rodada larga" al 2026-05-20.');
+  });
+
+  it('muestra un error cuando falla el movimiento', async () => {
+    facade.moveWorkout.mockImplementation(async () => {
+      throw new Error('Fail');
+    });
+    await settle();
+
+    await fixture.componentInstance.requestRelocation(buildRelocation());
+    await settle();
+
+    expect(fixture.nativeElement.textContent).toContain(
+      'No se pudo mover el entrenamiento. Intenta nuevamente.',
+    );
+    expect(fixture.nativeElement.textContent).not.toContain('Se movió');
   });
 });
