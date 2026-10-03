@@ -15,6 +15,10 @@ import {
   type ScheduledWorkoutEntity,
 } from '../../core/domain/schemas/scheduled-workout.schema';
 import { WorkoutStatus } from '../../core/domain/workout.enums';
+import type {
+  WorkoutRelocation,
+  WorkoutRelocationMode,
+} from '../../core/models/calendar-view-models';
 import {
   SPORT_LABELS,
   WORKOUT_CATEGORY_LABELS,
@@ -27,7 +31,7 @@ import {
 } from '../../core/services/workout-completion.service';
 import { ModalComponent } from '../../layouts/modal/modal.component';
 
-type ModalView = 'detail' | 'confirm-future' | 'complete';
+type ModalView = 'detail' | 'confirm-future' | 'complete' | 'relocate';
 
 interface CompletionDraft {
   durationMinutes: number | null;
@@ -39,7 +43,10 @@ interface CompletionDraft {
 
 const completionInputSchema = workoutCompletionSchema.omit({ completedAt: true });
 
-/** Detail of a scheduled workout with its status actions: complete, skip, reopen and edit. */
+/**
+ * Detail of a scheduled workout with its actions: complete, skip, reopen, edit, and move or copy
+ * to another day. Moving and copying are emitted, so the calendar confirms and runs them.
+ */
 @Component({
   selector: 'app-workout-detail-modal',
   imports: [ModalComponent],
@@ -56,11 +63,14 @@ export class WorkoutDetailModalComponent {
   readonly changed = output<ScheduledWorkoutEntity>();
   readonly edit = output<string>();
   readonly closed = output<void>();
+  readonly relocated = output<WorkoutRelocation>();
 
   readonly view = signal<ModalView>('detail');
   readonly draft = signal<CompletionDraft>(emptyDraft());
   readonly errors = signal<string[]>([]);
   readonly isBusy = signal(false);
+  readonly relocationMode = signal<WorkoutRelocationMode>('move');
+  readonly relocationDate = signal('');
 
   readonly feelingOptions = [1, 2, 3, 4, 5];
 
@@ -163,6 +173,51 @@ export class WorkoutDetailModalComponent {
   async reopen(): Promise<void> {
     const workout = this.workout();
     if (workout) await this.run(() => this.completionService.reopen(workout.id));
+  }
+
+  startRelocation(mode: WorkoutRelocationMode): void {
+    const workout = this.workout();
+    if (!workout) return;
+
+    this.errors.set([]);
+    this.relocationMode.set(mode);
+    this.relocationDate.set(workout.scheduledDate);
+    this.view.set('relocate');
+  }
+
+  setRelocationDate(event: Event): void {
+    this.relocationDate.set(readText(event));
+    this.errors.set([]);
+  }
+
+  confirmRelocation(): void {
+    const workout = this.workout();
+    if (!workout) return;
+
+    const targetDate = this.relocationDate();
+    const mode = this.relocationMode();
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDate)) {
+      this.errors.set(['Selecciona la fecha.']);
+      return;
+    }
+
+    if (mode === 'move' && targetDate === workout.scheduledDate) {
+      this.errors.set(['Selecciona una fecha distinta a la actual.']);
+      return;
+    }
+
+    this.view.set('detail');
+    this.relocated.emit({
+      workout: {
+        id: workout.id,
+        title: workout.title,
+        status: workout.status,
+        scheduledDate: workout.scheduledDate,
+      },
+      targetDate,
+      mode,
+    });
   }
 
   requestEdit(): void {

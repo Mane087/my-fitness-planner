@@ -14,18 +14,23 @@ import { AppSettingsRepository } from '../../src/app/core/repositories/app-setti
 import { AthleteProfileRepository } from '../../src/app/core/repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../../src/app/core/repositories/scheduled-workout.repository';
 import { CalendarFacade } from '../../src/app/core/services/calendar-facade.service';
+import { TrainingCalendarService } from '../../src/app/core/services/training-calendar.service';
 import { scheduledWorkout } from '../domain/fixtures';
 
 describe('CalendarFacade', () => {
   let facade: CalendarFacade;
   let scheduledWorkoutRepository: jest.Mocked<Pick<ScheduledWorkoutRepository, 'findByDateRange'>>;
   let athleteProfileRepository: jest.Mocked<Pick<AthleteProfileRepository, 'getActiveProfile'>>;
-  let appSettingsRepository: jest.Mocked<Pick<AppSettingsRepository, 'getSettings'>>;
+  let appSettingsRepository: jest.Mocked<Pick<AppSettingsRepository, 'getSettings' | 'update'>>;
+  let trainingCalendarService: jest.Mocked<
+    Pick<TrainingCalendarService, 'moveWorkout' | 'copyWorkout'>
+  >;
 
   beforeEach(() => {
     scheduledWorkoutRepository = { findByDateRange: jest.fn() };
     athleteProfileRepository = { getActiveProfile: jest.fn() };
-    appSettingsRepository = { getSettings: jest.fn() };
+    appSettingsRepository = { getSettings: jest.fn(), update: jest.fn() };
+    trainingCalendarService = { moveWorkout: jest.fn(), copyWorkout: jest.fn() };
 
     TestBed.configureTestingModule({
       providers: [
@@ -34,6 +39,7 @@ describe('CalendarFacade', () => {
         { provide: ScheduledWorkoutRepository, useValue: scheduledWorkoutRepository },
         { provide: AthleteProfileRepository, useValue: athleteProfileRepository },
         { provide: AppSettingsRepository, useValue: appSettingsRepository },
+        { provide: TrainingCalendarService, useValue: trainingCalendarService },
       ],
     });
 
@@ -245,6 +251,165 @@ describe('CalendarFacade', () => {
   it('desplaza la semana de referencia', () => {
     expect(facade.shiftWeek('2026-05-06', -1)).toBe('2026-04-29');
   });
+
+  it('calcula el rango de la semana con inicio en lunes', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([]);
+
+    const viewModel = await facade.loadWeek('2026-05-13');
+
+    expect(scheduledWorkoutRepository.findByDateRange).toHaveBeenCalledWith(
+      '2026-05-11',
+      '2026-05-17',
+    );
+    expect(viewModel.startDate).toBe('2026-05-11');
+    expect(viewModel.endDate).toBe('2026-05-17');
+    expect(viewModel.rangeLabel).toBe('11 may al 17 may');
+  });
+
+  it('calcula el rango de la semana con inicio en domingo', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue({
+      ...buildProfile(),
+      weekStartsOn: WeekStartsOn.Sunday,
+    });
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([]);
+
+    const viewModel = await facade.loadWeek('2026-05-13');
+
+    expect(scheduledWorkoutRepository.findByDateRange).toHaveBeenCalledWith(
+      '2026-05-10',
+      '2026-05-16',
+    );
+    expect(viewModel.startDate).toBe('2026-05-10');
+    expect(viewModel.endDate).toBe('2026-05-16');
+  });
+
+  it('agrupa los entrenamientos de la semana por día, ordenados y con su etiqueta', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({ id: 'monday-a', scheduledDate: '2026-05-11' }),
+      buildWorkout({ id: 'monday-b', scheduledDate: '2026-05-11' }),
+      buildWorkout({ id: 'wednesday', scheduledDate: '2026-05-13' }),
+    ]);
+
+    const viewModel = await facade.loadWeek('2026-05-13');
+
+    expect(viewModel.days.map((day) => day.date)).toEqual([
+      '2026-05-11',
+      '2026-05-12',
+      '2026-05-13',
+      '2026-05-14',
+      '2026-05-15',
+      '2026-05-16',
+      '2026-05-17',
+    ]);
+    expect(viewModel.days.map((day) => day.weekdayLabel)).toEqual([
+      'Lunes',
+      'Martes',
+      'Miércoles',
+      'Jueves',
+      'Viernes',
+      'Sábado',
+      'Domingo',
+    ]);
+
+    const monday = viewModel.days.find((day) => day.date === '2026-05-11');
+    const wednesday = viewModel.days.find((day) => day.date === '2026-05-13');
+    const tuesday = viewModel.days.find((day) => day.date === '2026-05-12');
+
+    expect(monday?.workouts.map((workout) => workout.id)).toEqual(['monday-a', 'monday-b']);
+    expect(wednesday?.workouts.map((workout) => workout.id)).toEqual(['wednesday']);
+    expect(tuesday?.workouts).toEqual([]);
+  });
+
+  it('calcula las etiquetas de lo planeado y lo real por día, sin lo real cuando nada se completó', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'planned-only',
+        scheduledDate: '2026-05-11',
+        plannedDurationSeconds: 3600,
+        plannedDistanceMeters: undefined,
+      }),
+      buildWorkout({
+        id: 'completed',
+        scheduledDate: '2026-05-12',
+        plannedDurationSeconds: 3600,
+        plannedDistanceMeters: 20000,
+        status: 'completed',
+        completion: {
+          completedAt: '2026-05-12T18:00:00.000Z',
+          durationSeconds: 3000,
+          distanceMeters: 20000,
+        },
+      }),
+    ]);
+
+    const viewModel = await facade.loadWeek('2026-05-13');
+
+    const plannedOnlyDay = viewModel.days.find((day) => day.date === '2026-05-11');
+    const completedDay = viewModel.days.find((day) => day.date === '2026-05-12');
+    const emptyDay = viewModel.days.find((day) => day.date === '2026-05-14');
+
+    expect(plannedOnlyDay?.plannedLabel).toBe('1 h');
+    expect(plannedOnlyDay?.actualLabel).toBeNull();
+    expect(completedDay?.plannedLabel).toBe('1 h · 20 km');
+    expect(completedDay?.actualLabel).toBe('50 min · 20 km');
+    expect(emptyDay?.plannedLabel).toBe('-- h');
+    expect(emptyDay?.actualLabel).toBeNull();
+  });
+
+  it('carga la vista por defecto guardada en los ajustes', async () => {
+    appSettingsRepository.getSettings.mockResolvedValue(
+      buildSettings({ calendarDefaultView: 'week' }),
+    );
+
+    expect(await facade.loadDefaultView()).toBe('week');
+  });
+
+  it('no actualiza los ajustes si la vista guardada no cambia', async () => {
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+
+    await facade.saveDefaultView(CalendarDefaultView.Month);
+
+    expect(appSettingsRepository.update).not.toHaveBeenCalled();
+  });
+
+  it('guarda la vista por defecto cuando cambia', async () => {
+    const settings = buildSettings();
+    appSettingsRepository.getSettings.mockResolvedValue(settings);
+
+    await facade.saveDefaultView(CalendarDefaultView.Week);
+
+    expect(appSettingsRepository.update).toHaveBeenCalledWith({
+      ...settings,
+      calendarDefaultView: 'week',
+    });
+  });
+
+  it('delega moveWorkout en TrainingCalendarService', async () => {
+    const moved = buildWorkout({ id: 'workout-1', scheduledDate: '2026-05-20' });
+    trainingCalendarService.moveWorkout.mockResolvedValue(moved);
+
+    const result = await facade.moveWorkout('workout-1', '2026-05-20');
+
+    expect(trainingCalendarService.moveWorkout).toHaveBeenCalledWith('workout-1', '2026-05-20');
+    expect(result).toBe(moved);
+  });
+
+  it('delega copyWorkout en TrainingCalendarService', async () => {
+    const copy = buildWorkout({ id: 'workout-2', scheduledDate: '2026-05-20' });
+    trainingCalendarService.copyWorkout.mockResolvedValue(copy);
+
+    const result = await facade.copyWorkout('workout-1', '2026-05-20');
+
+    expect(trainingCalendarService.copyWorkout).toHaveBeenCalledWith('workout-1', '2026-05-20');
+    expect(result).toBe(copy);
+  });
 });
 
 function buildProfile(): AthleteProfileEntity {
@@ -260,7 +425,7 @@ function buildProfile(): AthleteProfileEntity {
   };
 }
 
-function buildSettings(): AppSettingsEntity {
+function buildSettings(overrides: Partial<AppSettingsEntity> = {}): AppSettingsEntity {
   return {
     id: 'settings-1',
     calendarDefaultView: CalendarDefaultView.Month,
@@ -268,6 +433,7 @@ function buildSettings(): AppSettingsEntity {
     timeFormat: TimeFormat.TwentyFourHour,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
+    ...overrides,
   };
 }
 

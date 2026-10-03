@@ -1,0 +1,70 @@
+<p class="mb-3 hidden text-sm text-slate-400 md:block">
+  Arrastra un entrenamiento a otro día para moverlo. Mantén Ctrl o Alt al soltarlo para copiarlo.
+  También puedes usar "Mover a…" y "Copiar a…" en su detalle.
+</p>
+
+<ol class="grid gap-3 md:grid-cols-7" aria-label="Días de la semana">
+  @for (day of week().days; track day.date) {
+    <li
+      class="flex flex-col gap-2 rounded-2xl border p-3 transition-colors md:min-h-48"
+      [ngClass]="
+        dropTargetDate() === day.date
+          ? 'border-blue-400 bg-blue-950/40'
+          : day.isToday
+            ? 'border-blue-400/60 bg-slate-900/70'
+            : 'border-slate-800 bg-slate-900/70'
+      "
+      [attr.aria-labelledby]="'week-day-title-' + day.date"
+      [attr.data-testid]="'week-day-' + day.date"
+      (dragover)="onDragOver($event, day.date)"
+      (drop)="onDrop($event, day.date)"
+    >
+      <div class="flex items-start justify-between gap-2">
+        <h3 [id]="'week-day-title-' + day.date">
+          <span class="block text-xs font-bold uppercase tracking-wide text-slate-400">{{
+            day.weekdayLabel
+          }}</span>
+          <span
+            class="text-sm font-semibold"
+            [ngClass]="day.isToday ? 'text-blue-300' : 'text-slate-100'"
+            >{{ day.dateLabel }}</span
+          >
+        </h3>
+        <button
+          type="button"
+          class="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-blue-400 hover:text-blue-200 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
+          [attr.aria-label]="'Agregar entrenamiento el ' + day.date"
+          (click)="createRequested.emit(day.date)"
+        >
+          +
+        </button>
+      </div>
+
+      @if (day.workouts.length > 0) {
+        <dl class="grid grid-cols-[auto_1fr] gap-x-2 text-xs text-slate-300 md:grid-cols-1">
+          <dt class="text-slate-500">Planeado</dt>
+          <dd>{{ day.plannedLabel }}</dd>
+          @if (day.actualLabel) {
+            <dt class="text-slate-500">Real</dt>
+            <dd>{{ day.actualLabel }}</dd>
+          }
+        </dl>
+      }
+
+      <div class="flex flex-col gap-2">
+        @for (workout of day.workouts; track workout.id) {
+          <app-workout-card
+            draggable="true"
+            [class.opacity-40]="draggedWorkout()?.id === workout.id"
+            [workout]="workout"
+            (opened)="opened.emit($event)"
+            (dragstart)="onDragStart($event, workout)"
+            (dragend)="endDrag()"
+          />
+        } @empty {
+          <p class="text-xs text-slate-500">Sin entrenamientos</p>
+        }
+      </div>
+    </li>
+  }
+</ol>
