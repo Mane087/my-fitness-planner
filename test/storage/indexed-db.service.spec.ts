@@ -2,6 +2,7 @@ import { IDBKeyRange as FakeIDBKeyRange } from 'fake-indexeddb';
 
 import {
   CalendarDefaultView,
+  ThemePreference,
   TimeFormat,
   WeekStartsOn,
 } from '../../src/app/core/domain/calendar.enums';
@@ -21,6 +22,7 @@ function createSettings(overrides: Partial<AppSettingsEntity> = {}): AppSettings
     calendarDefaultView: CalendarDefaultView.Month,
     weekStartsOn: WeekStartsOn.Monday,
     timeFormat: TimeFormat.TwentyFourHour,
+    theme: ThemePreference.System,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

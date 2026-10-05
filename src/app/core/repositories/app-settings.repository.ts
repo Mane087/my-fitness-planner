@@ -1,6 +1,11 @@
 import { inject, Injectable } from '@angular/core';
 
-import { CalendarDefaultView, TimeFormat, WeekStartsOn } from '../domain/calendar.enums';
+import {
+  CalendarDefaultView,
+  ThemePreference,
+  TimeFormat,
+  WeekStartsOn,
+} from '../domain/calendar.enums';
 import { appSettingsSchema, type AppSettingsEntity } from '../domain/schemas/app-settings.schema';
 import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
@@ -37,6 +42,7 @@ export class AppSettingsRepository {
       calendarDefaultView: CalendarDefaultView.Month,
       weekStartsOn: WeekStartsOn.Monday,
       timeFormat: TimeFormat.TwentyFourHour,
+      theme: ThemePreference.System,
       createdAt: timestamp,
       updatedAt: timestamp,
     };

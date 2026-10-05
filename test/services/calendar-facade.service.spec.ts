@@ -3,6 +3,7 @@ import { provideRouter, Router } from '@angular/router';
 
 import {
   CalendarDefaultView,
+  ThemePreference,
   TimeFormat,
   WeekStartsOn,
 } from '../../src/app/core/domain/calendar.enums';
@@ -431,6 +432,7 @@ function buildSettings(overrides: Partial<AppSettingsEntity> = {}): AppSettingsE
     calendarDefaultView: CalendarDefaultView.Month,
     weekStartsOn: WeekStartsOn.Monday,
     timeFormat: TimeFormat.TwentyFourHour,
+    theme: ThemePreference.System,
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,

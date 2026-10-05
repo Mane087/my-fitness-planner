@@ -77,8 +77,32 @@ describe('BackupService (fake-indexeddb)', () => {
       const oldBackup = { ...JSON.parse(file.content), schemaVersion: 1 };
 
       await expect(backups.importBackup(JSON.stringify(oldBackup))).rejects.toThrow(
-        'El respaldo es de la versión 1 y esta aplicación solo acepta la versión 2.',
+        'El respaldo es de la versión 1 y esta aplicación solo acepta las versiones 2 y 3.',
       );
+    });
+
+    it('imports a version 2 backup whose settings have no theme', async () => {
+      const file = await backups.createBackupFile();
+      const backup = JSON.parse(file.content);
+      backup.schemaVersion = 2;
+      delete backup.stores[IndexedDbStore.AppSettings][0].theme;
+
+      await backups.importBackup(JSON.stringify(backup));
+
+      await expect(TestBed.inject(AppSettingsRepository).getSettings()).resolves.toMatchObject({
+        theme: 'system',
+      });
+    });
+
+    it('keeps the theme through export and import', async () => {
+      const settings = TestBed.inject(AppSettingsRepository);
+      await settings.update({ ...(await settings.getSettings()), theme: 'dark' });
+      const file = await backups.createBackupFile();
+      await settings.update({ ...(await settings.getSettings()), theme: 'light' });
+
+      await backups.importBackup(file.content);
+
+      await expect(settings.getSettings()).resolves.toMatchObject({ theme: 'dark' });
     });
 
     it('rejects a JSON that is not a backup', async () => {
