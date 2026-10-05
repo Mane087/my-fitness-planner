@@ -18,13 +18,16 @@
     >
       <div class="flex items-center gap-x-3">
         <div
-          class="grid h-11 w-11 place-items-center rounded-full bg-primary text-sm font-bold text-text-secondary"
+          class="grid h-11 w-11 place-items-center rounded-full bg-primary text-sm font-bold text-legacy-fg-on-dark"
           aria-hidden="true"
         >
           {{ userName().charAt(0).toLocaleUpperCase('es-ES') }}
         </div>
         <div>
-          <p id="calendar-title" class="text-2xl font-semibold tracking-tight text-text-secondary">
+          <p
+            id="calendar-title"
+            class="text-2xl font-semibold tracking-tight text-legacy-fg-on-dark"
+          >
             {{ userName() }}
           </p>
         </div>

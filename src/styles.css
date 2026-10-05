@@ -1,5 +1,7 @@
 /* You can add global styles to this file, and also import other style files */
 @import 'tailwindcss';
+@import './styles/fonts.css';
+@import './styles/theme.css';
 
 @theme {
   --color-primary: #2463b5;
@@ -8,9 +10,16 @@
 
   --color-border: #cccc;
 
-  --color-text-primary: #363636;
-  --color-text-secondary: #f1f5f9;
+  /* Renamed from text-primary / text-secondary, which are now semantic tokens. Remove with the restyle issues. */
+  --color-legacy-ink: #363636;
+  --color-legacy-fg-on-dark: #f1f5f9;
   --color-text-focused: #a2f4fd;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
 }
 
 /* Scrollbar global */
