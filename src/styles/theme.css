@@ -94,9 +94,48 @@
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
   --font-metric: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
 
+  /* Type styles from Figma. Usage: `text-h1`, `text-body`, `font-metric text-metric-xl` (metric styles set weight 600). */
+  --text-display: 36px;
+  --text-display--line-height: 40px;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h1--letter-spacing: -0.01em;
+  --text-h1--font-weight: 700;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--letter-spacing: -0.005em;
+  --text-h2--font-weight: 600;
+  --text-h3: 16px;
+  --text-h3--line-height: 24px;
+  --text-h3--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body--font-weight: 400;
+  --text-small: 12px;
+  --text-small--line-height: 16px;
+  --text-small--font-weight: 400;
+  --text-label: 12px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 500;
+  --text-caps: 11px;
+  --text-caps--line-height: 16px;
+  --text-caps--letter-spacing: 0.06em;
+  --text-caps--font-weight: 600;
+  --text-metric-xl: 36px;
+  --text-metric-xl--line-height: 40px;
+  --text-metric-xl--font-weight: 600;
+  --text-metric-l: 24px;
+  --text-metric-l--line-height: 28px;
+  --text-metric-l--font-weight: 600;
+  --text-metric-m: 18px;
+  --text-metric-m--line-height: 24px;
+  --text-metric-m--font-weight: 600;
+
   /*
-   * Type scale (12–72 px), spacing scale (4–128 px) and radius (4/8/12/16 px) match the
-   * Tailwind defaults: text-xs…text-7xl, spacing 1…32, rounded-sm / rounded-lg / rounded-xl / rounded-2xl.
+   * Spacing (4–96 px) and radius (4/8/12/16 px) match the Tailwind defaults:
+   * spacing 1…24 and rounded-sm / rounded-lg / rounded-xl / rounded-2xl (Figma radius sm / md / lg / xl).
    */
 }
 
@@ -109,13 +148,13 @@
   --bg-subtle: var(--color-cool-grey-100);
   --bg-inverse: var(--color-cool-grey-900);
 
-  --border-default: var(--color-cool-grey-200);
-  --border-strong: var(--color-cool-grey-300);
+  --border-default: var(--color-cool-grey-100);
+  --border-strong: var(--color-cool-grey-200);
 
   --text-primary: var(--color-cool-grey-900);
   --text-secondary: var(--color-cool-grey-600);
-  --text-tertiary: var(--color-cool-grey-500);
-  --text-accent: var(--color-indigo-600);
+  --text-tertiary: var(--color-cool-grey-400);
+  --text-accent: var(--color-indigo-700);
   --text-on-accent: #ffffff;
   --text-on-inverse: var(--color-cool-grey-050);
 
@@ -131,8 +170,15 @@
   --status-danger: var(--color-red-600);
   --status-danger-subtle: var(--color-red-050);
 
-  --shadow-ink: 31 41 51;
-  --shadow-strength: 1;
+  --zone-z1: var(--color-cool-grey-300);
+  --zone-z2: var(--color-indigo-300);
+  --zone-z3: var(--color-green-400);
+  --zone-z4: var(--color-yellow-400);
+  --zone-z5: var(--color-orange-400);
+  --zone-z6: var(--color-red-500);
+  --zone-z7: var(--color-magenta-500);
+  /* Text on a zone color always uses grey-900. */
+  --text-on-zone: var(--color-cool-grey-900);
 }
 
 /* ---- Semantic tokens: dark ---- */
@@ -148,26 +194,32 @@
   --border-strong: var(--color-cool-grey-600);
 
   --text-primary: var(--color-cool-grey-050);
-  --text-secondary: var(--color-cool-grey-200);
-  --text-tertiary: var(--color-cool-grey-300);
+  --text-secondary: var(--color-cool-grey-300);
+  --text-tertiary: var(--color-cool-grey-400);
   --text-accent: var(--color-indigo-200);
   --text-on-accent: #ffffff;
   --text-on-inverse: var(--color-cool-grey-900);
 
   --accent-default: var(--color-indigo-500);
   --accent-hover: var(--color-indigo-400);
-  --accent-muted: color-mix(in srgb, var(--color-indigo-400) 24%, transparent);
-  --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 12%, transparent);
+  --accent-muted: color-mix(in srgb, var(--color-indigo-300) 40%, transparent);
+  --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 18%, transparent);
 
   --status-success: var(--color-green-300);
-  --status-success-subtle: color-mix(in srgb, var(--color-green-300) 16%, transparent);
-  --status-warning: var(--color-yellow-400);
-  --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 16%, transparent);
+  --status-success-subtle: color-mix(in srgb, var(--color-green-400) 16%, transparent);
+  --status-warning: var(--color-yellow-300);
+  --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 14%, transparent);
   --status-danger: var(--color-red-300);
-  --status-danger-subtle: color-mix(in srgb, var(--color-red-300) 16%, transparent);
+  --status-danger-subtle: color-mix(in srgb, var(--color-red-400) 16%, transparent);
 
-  --shadow-ink: 0 0 0;
-  --shadow-strength: 2.5;
+  --zone-z1: var(--color-cool-grey-400);
+  --zone-z2: var(--color-indigo-300);
+  --zone-z3: var(--color-green-400);
+  --zone-z4: var(--color-yellow-400);
+  --zone-z5: var(--color-orange-400);
+  --zone-z6: var(--color-red-400);
+  --zone-z7: var(--color-magenta-400);
+  --text-on-zone: var(--color-cool-grey-900);
 }
 
 /* Same dark values when the preference is `system` and no data-theme has been applied yet. */
@@ -184,39 +236,33 @@
     --border-strong: var(--color-cool-grey-600);
 
     --text-primary: var(--color-cool-grey-050);
-    --text-secondary: var(--color-cool-grey-200);
-    --text-tertiary: var(--color-cool-grey-300);
+    --text-secondary: var(--color-cool-grey-300);
+    --text-tertiary: var(--color-cool-grey-400);
     --text-accent: var(--color-indigo-200);
     --text-on-accent: #ffffff;
     --text-on-inverse: var(--color-cool-grey-900);
 
     --accent-default: var(--color-indigo-500);
     --accent-hover: var(--color-indigo-400);
-    --accent-muted: color-mix(in srgb, var(--color-indigo-400) 24%, transparent);
-    --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 12%, transparent);
+    --accent-muted: color-mix(in srgb, var(--color-indigo-300) 40%, transparent);
+    --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 18%, transparent);
 
     --status-success: var(--color-green-300);
-    --status-success-subtle: color-mix(in srgb, var(--color-green-300) 16%, transparent);
-    --status-warning: var(--color-yellow-400);
-    --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 16%, transparent);
+    --status-success-subtle: color-mix(in srgb, var(--color-green-400) 16%, transparent);
+    --status-warning: var(--color-yellow-300);
+    --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 14%, transparent);
     --status-danger: var(--color-red-300);
-    --status-danger-subtle: color-mix(in srgb, var(--color-red-300) 16%, transparent);
+    --status-danger-subtle: color-mix(in srgb, var(--color-red-400) 16%, transparent);
 
-    --shadow-ink: 0 0 0;
-    --shadow-strength: 2.5;
+    --zone-z1: var(--color-cool-grey-400);
+    --zone-z2: var(--color-indigo-300);
+    --zone-z3: var(--color-green-400);
+    --zone-z4: var(--color-yellow-400);
+    --zone-z5: var(--color-orange-400);
+    --zone-z6: var(--color-red-400);
+    --zone-z7: var(--color-magenta-400);
+    --text-on-zone: var(--color-cool-grey-900);
   }
-}
-
-/* Zone colors are the same in both themes; text on a zone color always uses grey-900. */
-:root {
-  --zone-z1: var(--color-cool-grey-200);
-  --zone-z2: var(--color-indigo-300);
-  --zone-z3: var(--color-green-300);
-  --zone-z4: var(--color-yellow-300);
-  --zone-z5: var(--color-orange-300);
-  --zone-z6: var(--color-red-400);
-  --zone-z7: var(--color-magenta-400);
-  --text-on-zone: var(--color-cool-grey-900);
 }
 
 @theme inline {
@@ -256,17 +302,10 @@
   --color-zone-z6: var(--zone-z6);
   --color-zone-z7: var(--zone-z7);
 
-  /* Elevation: 4 levels, light from above (tight contact shadow + soft cast shadow). */
-  --shadow-elevation-1:
-    0 1px 2px rgb(var(--shadow-ink) / calc(0.08 * var(--shadow-strength))),
-    0 1px 1px rgb(var(--shadow-ink) / calc(0.06 * var(--shadow-strength)));
-  --shadow-elevation-2:
-    0 4px 8px -2px rgb(var(--shadow-ink) / calc(0.1 * var(--shadow-strength))),
-    0 2px 4px rgb(var(--shadow-ink) / calc(0.06 * var(--shadow-strength)));
-  --shadow-elevation-3:
-    0 12px 24px -6px rgb(var(--shadow-ink) / calc(0.12 * var(--shadow-strength))),
-    0 4px 8px rgb(var(--shadow-ink) / calc(0.05 * var(--shadow-strength)));
+  /* Elevation: 4 levels from Figma (Card, Dropdown, Drag, Modal). */
+  --shadow-elevation-1: 0 1px 3px 0 rgb(31 41 51 / 0.1), 0 1px 2px 0 rgb(31 41 51 / 0.06);
+  --shadow-elevation-2: 0 4px 6px -1px rgb(31 41 51 / 0.08), 0 2px 4px -1px rgb(31 41 51 / 0.06);
+  --shadow-elevation-3: 0 10px 15px -3px rgb(31 41 51 / 0.12), 0 4px 6px -2px rgb(31 41 51 / 0.06);
   --shadow-elevation-4:
-    0 32px 56px -12px rgb(var(--shadow-ink) / calc(0.18 * var(--shadow-strength))),
-    0 8px 16px rgb(var(--shadow-ink) / calc(0.04 * var(--shadow-strength)));
+    0 20px 25px -5px rgb(31 41 51 / 0.14), 0 10px 10px -5px rgb(31 41 51 / 0.05);
 }
