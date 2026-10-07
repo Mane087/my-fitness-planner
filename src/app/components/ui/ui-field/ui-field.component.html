@@ -1,0 +1,40 @@
+<div class="flex flex-col gap-1.5">
+  <label [for]="inputId()" class="text-label text-text-secondary">{{ label() }}</label>
+
+  <div
+    class="flex items-center gap-2 rounded-lg border bg-bg-surface px-3 py-2 text-text-tertiary"
+    [class]="
+      errorMessage()
+        ? 'border-status-danger ring-1 ring-status-danger'
+        : 'border-border-strong focus-within:border-accent-default focus-within:ring-1 focus-within:ring-accent-default'
+    "
+    [class.bg-bg-subtle]="isDisabled()"
+  >
+    @if (icon(); as iconName) {
+      <app-ui-icon [name]="iconName" />
+    }
+    <input
+      [id]="inputId()"
+      [type]="inputType()"
+      [placeholder]="placeholder()"
+      [value]="value()"
+      [disabled]="isDisabled()"
+      [attr.min]="min()"
+      [attr.max]="max()"
+      [attr.step]="step()"
+      [attr.autocomplete]="autocomplete()"
+      [attr.aria-invalid]="errorMessage() ? 'true' : null"
+      [attr.aria-describedby]="errorMessage() ? errorId : null"
+      class="min-w-0 flex-1 bg-transparent text-body text-text-primary outline-none placeholder:text-text-tertiary disabled:text-text-tertiary"
+      (input)="onInput($event)"
+      (blur)="onBlur()"
+    />
+    @if (suffix(); as unit) {
+      <span class="text-small text-text-tertiary">{{ unit }}</span>
+    }
+  </div>
+
+  @if (errorMessage(); as message) {
+    <p [id]="errorId" class="text-small text-status-danger">{{ message }}</p>
+  }
+</div>

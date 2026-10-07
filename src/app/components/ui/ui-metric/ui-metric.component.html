@@ -1,0 +1,7 @@
+<span class="flex items-baseline gap-[3px]">
+  <span class="font-metric text-text-primary" [class]="valueClass()">{{ value() }}</span>
+  @if (unit(); as unitText) {
+    <span class="text-small text-text-secondary">{{ unitText }}</span>
+  }
+</span>
+<span class="text-caps text-text-tertiary uppercase">{{ label() }}</span>

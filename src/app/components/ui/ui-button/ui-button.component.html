@@ -1,0 +1,33 @@
+@if (kind() === 'link') {
+  <a
+    [routerLink]="link()"
+    [class]="classes()"
+    [attr.title]="title()"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-disabled]="isInactive() ? 'true' : null"
+    [attr.tabindex]="isInactive() ? -1 : null"
+  >
+    <ng-container *ngTemplateOutlet="content" />
+  </a>
+} @else {
+  <button
+    [type]="htmlType()"
+    [class]="classes()"
+    [attr.title]="title()"
+    [attr.aria-label]="ariaLabel()"
+    [attr.aria-busy]="isLoading() ? 'true' : null"
+    [disabled]="isInactive()"
+    (click)="onClick()"
+  >
+    <ng-container *ngTemplateOutlet="content" />
+  </button>
+}
+
+<ng-template #content>
+  @if (visibleIcon(); as iconName) {
+    <app-ui-icon [name]="iconName" [size]="iconSize()" [class.animate-spin]="isLoading()" />
+  }
+  @if (!isIconOnly()) {
+    <ng-content />
+  }
+</ng-template>
