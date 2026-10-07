@@ -1,3 +1,4 @@
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
@@ -35,6 +36,7 @@ const RAIL_PATHS: readonly string[] = ['/calendar'];
 })
 export class AppShellComponent {
   private readonly router = inject(Router);
+  private readonly location = inject(Location);
   private readonly weekSummary = inject(ShellWeekSummaryService);
 
   readonly navigationItems: readonly NavigationItem[] = [
@@ -43,13 +45,14 @@ export class AppShellComponent {
     { label: 'Perfil y zonas', path: '/profile', icon: 'user' },
   ];
 
+  // Before the first navigation ends the router still reports '/', so the browser location gives
+  // the real starting path and avoids showing the sidebar for a moment on the calendar.
   private readonly currentUrl = toSignal(
     this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd),
       map((event) => event.urlAfterRedirects),
-      startWith(this.router.url),
     ),
-    { initialValue: this.router.url },
+    { initialValue: this.location.path() },
   );
 
   protected readonly isRail = computed(() => {
