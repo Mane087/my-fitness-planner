@@ -1,0 +1,17 @@
+@if (summary(); as week) {
+  <section
+    aria-labelledby="week-summary-title"
+    class="flex flex-col gap-2 rounded-xl bg-bg-subtle p-4"
+    data-testid="sidebar-week-summary"
+  >
+    <h2 id="week-summary-title" class="text-caps text-text-tertiary uppercase">Esta semana</h2>
+    <p class="flex items-baseline gap-1">
+      <span class="font-metric text-metric-l text-text-primary">{{ week.actualClock }}</span>
+      <span class="text-small text-text-secondary">/ {{ week.plannedClock }} h</span>
+    </p>
+    <app-ui-progress [value]="week.progressPercent" ariaLabel="Avance de tiempo de la semana" />
+    <p class="text-small text-text-secondary">
+      {{ week.completedSessions }} de {{ week.sessions }} entrenamientos
+    </p>
+  </section>
+}
