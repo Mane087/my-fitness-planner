@@ -119,6 +119,16 @@ Mover y copiar entrenamientos (`TrainingCalendarService.moveWorkout` y `copyWork
 - En cualquier vista, con teclado o pantalla táctil, el detalle del entrenamiento tiene las acciones "Mover a…" y "Copiar a…" con un selector de fecha.
 - Mover un entrenamiento completado pide confirmación y conserva su registro de ejecución. La copia siempre se crea como planeada, con un `id` nuevo y sin `completion`.
 
+## Editor de entrenamientos
+
+La página `training-session-form-page` tiene encabezado (migas, título, etiquetas, acciones), barra de resumen, columna principal y columna lateral. Los campos y el comportamiento de edición no cambian.
+
+- **Barra de resumen**: duración, distancia y número de pasos. En ciclismo y carrera agrega el tiempo por zona (`training-session-summary.ts`, a partir de `sumSecondsByZone`). En movilidad y pliometría muestra ejercicios, circuitos y series totales.
+- **Perfil detallado**: `app-workout-profile` con `isDetailed` agrega ejes (zonas y tiempo), nombre de cada bloque y selección. El editor lo muestra solo para disciplinas de intervalos; el bloque seleccionado resalta su fila de la lista y viceversa.
+- **Disciplinas**: cada fila muestra solo los campos que usa (cadencia solo en ciclismo, RPE o zona según la métrica). Movilidad y pliometría no tienen gráfico y muestran la regla de estimación de duración.
+- **Columna lateral**: zonas de la métrica seleccionada o escala RPE, y tarjeta de detalles (objetivo, descripción, notas).
+- **Pendiente**: todas las filas siguen editables en línea (el formulario no se limita al paso seleccionado) para conservar los selectores de los E2E; la manipulación directa del gráfico, la hoja inferior del teléfono y la vista de texto son issues aparte.
+
 ## Migraciones
 
 `INDEXED_DB_VERSION` define la versión del esquema. `MIGRATIONS` es una lista ordenada de objetos `{ version, upgrade(database, transaction) }`. Al abrir la base con una versión mayor a la instalada, el navegador dispara `versionchange` y se ejecutan en orden todas las migraciones con `version > oldVersion`.

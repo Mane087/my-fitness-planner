@@ -4,9 +4,11 @@ import type { ExerciseStep } from '../../core/domain/schemas/workout-step.schema
 import { IntensityMetric } from '../../core/domain/workout.enums';
 import { readNumber, readText, withOptional } from './step-input.utils';
 import type { MoveDirection } from './workout-step-operations';
+import { UiButtonComponent } from '../ui/ui-button/ui-button.component';
 
 @Component({
   selector: 'app-exercise-step-row',
+  imports: [UiButtonComponent],
   templateUrl: './exercise-step-row.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -17,10 +19,14 @@ export class ExerciseStepRowComponent {
   readonly errors = input<readonly string[]>([]);
   readonly canMoveUp = input(true);
   readonly canMoveDown = input(true);
+  /** Highlights the row when the user selected this step in the profile or in the list. */
+  readonly isSelected = input(false);
 
   readonly changed = output<ExerciseStep>();
   readonly moved = output<MoveDirection>();
   readonly removed = output<void>();
+  /** Emits when the user clicks or focuses the row, to sync the profile selection. */
+  readonly selected = output<void>();
 
   readonly idPrefix = computed(() => `step-${this.step().id}`);
 

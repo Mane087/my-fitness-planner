@@ -1,19 +1,93 @@
 @if (bars().length > 0) {
-  <svg
-    class="block h-full w-full"
-    [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
-    preserveAspectRatio="none"
-    focusable="false"
-  >
-    @for (bar of bars(); track $index) {
-      <rect
-        [attr.x]="bar.x"
-        [attr.y]="bar.y"
-        [attr.width]="bar.width"
-        [attr.height]="bar.height"
-        [attr.data-zone]="bar.zone"
-        [class]="bar.fillClass"
-      />
-    }
-  </svg>
+  @if (isDetailed()) {
+    <div class="flex h-full gap-2">
+      <div class="relative w-8 shrink-0 text-small text-text-tertiary" aria-hidden="true">
+        @for (axis of axisZones; track axis.zone) {
+          <span class="absolute right-0 translate-y-1/2" [style.bottom.%]="axis.bottomPercent">
+            Z{{ axis.zone }}
+          </span>
+        }
+      </div>
+      <div class="flex min-w-0 flex-1 flex-col gap-1">
+        <div class="relative min-h-0 flex-1 rounded-md bg-bg-subtle">
+          <svg
+            class="absolute inset-0 block h-full w-full"
+            [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
+            preserveAspectRatio="none"
+            focusable="false"
+            aria-hidden="true"
+          >
+            @for (axis of axisZones; track axis.zone) {
+              <line
+                x1="0"
+                x2="100"
+                [attr.y1]="100 - axis.bottomPercent"
+                [attr.y2]="100 - axis.bottomPercent"
+                class="stroke-border-default"
+                stroke-width="0.4"
+                vector-effect="non-scaling-stroke"
+              />
+            }
+            @for (bar of bars(); track $index) {
+              <rect
+                [attr.x]="bar.x"
+                [attr.y]="bar.y"
+                [attr.width]="bar.width"
+                [attr.height]="bar.height"
+                [attr.data-zone]="bar.zone"
+                [class]="bar.fillClass"
+              />
+            }
+          </svg>
+          @for (bar of bars(); track $index) {
+            <button
+              type="button"
+              class="absolute bottom-0 flex cursor-pointer items-start overflow-hidden border-t-2 border-transparent px-1 pt-0.5 text-left text-small text-text-primary focus-visible:ring-2 focus-visible:ring-accent-default focus-visible:outline-none"
+              [class]="
+                bar.stepId === selectedStepId()
+                  ? 'bg-text-primary/10 border-text-primary!'
+                  : 'hover:bg-text-primary/10'
+              "
+              [style.left.%]="bar.startRatio * 100"
+              [style.width.%]="bar.widthRatio * 100"
+              [style.height.%]="bar.height"
+              [attr.aria-pressed]="bar.stepId === selectedStepId()"
+              [attr.aria-label]="'Seleccionar paso ' + (bar.label || 'sin nombre')"
+              (click)="select(bar.stepId)"
+            >
+              <span class="truncate">{{ bar.label }}</span>
+            </button>
+          }
+        </div>
+        <div class="relative h-4 text-small text-text-tertiary" aria-hidden="true">
+          @for (tick of timeTicks(); track $index; let isFirst = $first, isLast = $last) {
+            <span
+              class="absolute"
+              [class]="isFirst ? '' : isLast ? '-translate-x-full' : '-translate-x-1/2'"
+              [style.left.%]="tick.leftPercent"
+              >{{ tick.label }}</span
+            >
+          }
+        </div>
+      </div>
+    </div>
+  } @else {
+    <svg
+      class="block h-full w-full"
+      [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
+      preserveAspectRatio="none"
+      focusable="false"
+    >
+      @for (bar of bars(); track $index) {
+        <rect
+          [attr.x]="bar.x"
+          [attr.y]="bar.y"
+          [attr.width]="bar.width"
+          [attr.height]="bar.height"
+          [attr.data-zone]="bar.zone"
+          [class]="bar.fillClass"
+        />
+      }
+    </svg>
+  }
 }
