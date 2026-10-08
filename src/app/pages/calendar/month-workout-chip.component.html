@@ -1,0 +1,11 @@
+@let chip = workout();
+<button
+  type="button"
+  [class]="classes()"
+  [attr.aria-label]="chip.title + ', ' + chip.statusLabel"
+  (click)="opened.emit(chip.id)"
+>
+  <app-ui-icon [name]="sportIcon()" [size]="12" class="text-text-secondary" />
+  <span class="min-w-0 flex-1 truncate">{{ chip.title }}</span>
+  <span class="shrink-0 text-text-secondary">{{ chip.durationClock }}</span>
+</button>
