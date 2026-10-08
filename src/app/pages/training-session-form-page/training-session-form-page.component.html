@@ -1,56 +1,85 @@
-<main class="min-h-screen bg-slate-950 px-4 py-6 text-slate-100">
-  <header class="mb-6 flex items-start justify-between gap-4 w-full mx-auto lg:max-w-3/4">
-    <div>
-      <h1 id="session-form-title" class="text-3xl font-bold">
-        {{ heading() }}
-      </h1>
-      @if (isTemplate) {
-        <p class="mt-1 text-slate-300">Plantilla de la biblioteca, sin fecha</p>
-      } @else {
-        <p class="mt-1 capitalize text-slate-300">{{ selectedDateLabel() }}</p>
-      }
-    </div>
-    <button
-      type="button"
-      class="rounded-lg px-3 py-2 text-2xl hover:bg-slate-800 cursor-pointer transition-all ease-in-out"
-      title="Cerrar formulario"
-      (click)="cancel()"
-    >
-      ×
-    </button>
-  </header>
+<main class="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 text-text-primary md:px-8">
   @defer (when !loading()) {
     @if (loadError()) {
+      <h1 class="text-h1">{{ heading() }}</h1>
       <div
-        class="mx-auto max-w-3xl rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200"
+        class="rounded-xl border border-status-danger bg-status-danger-subtle p-6 text-status-danger"
       >
         <p>{{ loadError() }}</p>
-        <a [routerLink]="backLink.path" class="mt-4 inline-block font-semibold text-cyan-200">{{
+        <a [routerLink]="backLink.path" class="mt-4 inline-block text-label underline">{{
           backLink.label
         }}</a>
       </div>
     } @else if (!profileAvailable()) {
-      <div class="rounded-2xl border border-amber-700 bg-amber-950/30 p-6 text-amber-100">
+      <h1 class="text-h1">{{ heading() }}</h1>
+      <div
+        class="rounded-xl border border-status-warning bg-status-warning-subtle p-6 text-status-warning"
+      >
         <p>Configura tu perfil antes de crear entrenamientos.</p>
-        <a routerLink="/profile" class="mt-4 inline-block font-semibold text-cyan-200"
+        <a routerLink="/profile" class="mt-4 inline-block text-label underline"
           >Configurar perfil</a
         >
       </div>
     } @else {
-      <form
-        class="flex flex-col gap-6 rounded-3xl bg-white p-5 text-slate-950 shadow-xl w-full mx-auto lg:max-w-3/4"
-        [formGroup]="form"
-        (ngSubmit)="save()"
-      >
+      <form class="flex flex-col gap-6" [formGroup]="form" (ngSubmit)="save()">
+        <header class="flex flex-col gap-4">
+          <nav aria-label="Ruta de navegación" class="flex items-center gap-1 text-small">
+            <a [routerLink]="breadcrumbRoot.path" class="text-text-secondary hover:underline">{{
+              breadcrumbRoot.label
+            }}</a>
+            <span class="text-text-tertiary" aria-hidden="true">›</span>
+            <span class="text-text-primary" aria-current="page">{{ heading() }}</span>
+          </nav>
+
+          <div class="flex flex-wrap items-start justify-between gap-4">
+            <div class="flex min-w-0 flex-col gap-2">
+              <h1 id="session-form-title" class="truncate text-h1 text-text-primary">
+                @if (form.controls.title.value) {
+                  <span class="sr-only">{{ heading() }}: </span>{{ form.controls.title.value }}
+                } @else {
+                  {{ heading() }}
+                }
+              </h1>
+              <div class="flex flex-wrap items-center gap-2">
+                @if (sportChipLabel()) {
+                  <app-ui-tag tone="accent">{{ sportChipLabel() }}</app-ui-tag>
+                }
+                @if (categoryChipLabel()) {
+                  <app-ui-tag>{{ categoryChipLabel() }}</app-ui-tag>
+                }
+                @if (isTemplate) {
+                  <app-ui-tag>Plantilla de la biblioteca, sin fecha</app-ui-tag>
+                } @else if (shortDateLabel()) {
+                  <app-ui-tag [title]="selectedDateLabel()">{{ shortDateLabel() }}</app-ui-tag>
+                }
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+              @if (!isTemplate) {
+                <app-ui-button
+                  variant="secondary"
+                  [isDisabled]="saving()"
+                  (pressed)="saveAsTemplate()"
+                >
+                  Guardar como plantilla
+                </app-ui-button>
+              }
+              <app-ui-button variant="ghost" (pressed)="cancel()">Cancelar</app-ui-button>
+              <app-ui-button variant="primary" htmlType="submit" [isDisabled]="saving()">
+                {{ saving() ? 'Guardando...' : 'Guardar' }}
+              </app-ui-button>
+            </div>
+          </div>
+        </header>
+
         @if (errors().length > 0) {
-          <app-alert
-            [typeAlert]="typeAlert()"
-            alertMessage="Por favor, completa el formulario"
-            (showAlert)="closeSuccessAlert($event)"
-          />
-          <div class="rounded-2xl border border-red-300 bg-red-50 p-4 text-red-800" role="alert">
-            <p class="font-semibold">Revisa estos datos antes de guardar:</p>
-            <ul class="mt-2 list-disc pl-5 text-sm">
+          <div
+            class="rounded-xl border border-status-danger bg-status-danger-subtle p-4 text-status-danger"
+            role="alert"
+          >
+            <p class="text-label">Revisa estos datos antes de guardar:</p>
+            <ul class="mt-2 list-disc pl-5 text-small">
               @for (error of errors(); track error) {
                 <li>{{ error }}</li>
               }
@@ -58,169 +87,243 @@
           </div>
         }
 
-        <section id="informacion general">
-          <div class="grid gap-5 py-3 sm:grid-cols-2 lg:grid-cols-4">
-            <div class="col-span-full flex flex-wrap items-center gap-2 h-fit">
-              <div class="w-full sm:w-1/2 lg:w-1/4">
-                <app-input-form
-                  formControlName="title"
-                  labelText=""
+        <section
+          aria-label="Resumen del entrenamiento"
+          class="flex flex-wrap items-center gap-x-8 gap-y-4 rounded-xl border border-border-default bg-bg-surface px-6 py-4 shadow-elevation-1"
+        >
+          <p class="sr-only" data-testid="workout-totals">{{ totalsLabel() }}</p>
+
+          <div class="flex flex-wrap items-center gap-x-8 gap-y-4" aria-hidden="true">
+            <div class="flex flex-col">
+              <span class="font-metric text-metric-l text-text-primary">{{ durationClock() }}</span>
+              <span class="text-caps text-text-tertiary">
+                {{ isDurationEstimated() ? 'Duración est.' : 'Duración' }}
+              </span>
+            </div>
+            @if (distanceLabel(); as distance) {
+              <div class="flex flex-col">
+                <span class="font-metric text-metric-l text-text-primary"
+                  >{{ distance }} <span class="text-small text-text-tertiary">km</span></span
+                >
+                <span class="text-caps text-text-tertiary">Distancia</span>
+              </div>
+            }
+            @if (isIntervalSport()) {
+              <div class="flex flex-col">
+                <span class="font-metric text-metric-l text-text-primary">{{ stepCount() }}</span>
+                <span class="text-caps text-text-tertiary">pasos</span>
+              </div>
+            } @else {
+              <div class="flex flex-col">
+                <span class="font-metric text-metric-l text-text-primary">{{
+                  summary().exerciseCount
+                }}</span>
+                <span class="text-caps text-text-tertiary">
+                  ejercicios{{
+                    summary().groupCount > 0 ? ' · ' + summary().groupCount + ' circuito(s)' : ''
+                  }}
+                </span>
+              </div>
+              <div class="flex flex-col">
+                <span class="font-metric text-metric-l text-text-primary">{{
+                  summary().totalSets
+                }}</span>
+                <span class="text-caps text-text-tertiary">series totales</span>
+              </div>
+            }
+          </div>
+
+          @if (isIntervalSport() && summary().zones.length > 0) {
+            <div class="flex min-w-48 flex-1 flex-col gap-2" aria-hidden="true">
+              <span class="text-caps text-text-tertiary">Tiempo por zona · estimado</span>
+              <div class="flex h-2.5 w-full overflow-hidden rounded-full bg-bg-subtle">
+                @for (item of summary().zones; track item.zone) {
+                  <div
+                    class="h-full"
+                    [class]="zoneBackgroundClasses[item.zone]"
+                    [style.width.%]="item.widthPercent"
+                  ></div>
+                }
+              </div>
+              <ul class="flex flex-wrap gap-x-3 text-small text-text-secondary">
+                @for (item of summary().zones; track item.zone) {
+                  <li>Z{{ item.zone }} {{ item.minutes }}′</li>
+                }
+              </ul>
+            </div>
+          }
+        </section>
+
+        <div class="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+          <div class="flex min-w-0 flex-col gap-6">
+            <section
+              aria-label="Información general"
+              class="grid gap-4 rounded-xl border border-border-default bg-bg-surface p-5 shadow-elevation-1 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              <div class="sm:col-span-2 lg:col-span-3">
+                <app-ui-field
+                  label="Título"
                   inputId="workout-title"
-                  inputPlaceholder="Título del entrenamiento"
-                  [inputMaxValue]="120"
+                  placeholder="Título del entrenamiento"
+                  formControlName="title"
                 />
               </div>
-              <app-select
-                [options]="sportOptions"
-                formControlName="sport"
-                label=""
-                titleSelect="Deporte"
-                [simple]="true"
-                simpleClass="w-fit"
-              />
-              <p class="text-lg text-slate-600" data-testid="workout-totals">
-                {{ totalsLabel() }}
-              </p>
-            </div>
-
-            @if (modalityOptions().length > 0) {
-              <label class="flex flex-col gap-2">
-                <span class="font-semibold">Modalidad</span>
-                <select
-                  class="rounded-xl border border-slate-300 px-3 py-2"
+              <div class="flex flex-col gap-1.5">
+                <span class="text-label text-text-secondary">Deporte</span>
+                <app-select
+                  [options]="sportOptions"
+                  formControlName="sport"
+                  label=""
+                  titleSelect="Deporte"
+                  [simple]="true"
+                  simpleClass="w-fit"
+                />
+              </div>
+              @if (modalityOptions().length > 0) {
+                <app-ui-select
+                  label="Modalidad"
+                  [options]="modalityOptions()"
                   formControlName="modality"
-                >
-                  @for (option of modalityOptions(); track option.value) {
-                    <option [value]="option.value">{{ option.label }}</option>
-                  }
-                </select>
-              </label>
-            }
-            <label class="flex flex-col gap-2">
-              <span class="font-semibold">Categoría *</span>
-              <select
-                class="rounded-xl border border-slate-300 px-3 py-2"
+                />
+              }
+              <app-ui-select
+                label="Categoría *"
+                [options]="categoryOptions()"
                 formControlName="category"
-              >
-                @for (option of categoryOptions(); track option.value) {
-                  <option [value]="option.value">{{ option.label }}</option>
-                }
-              </select>
-            </label>
-            <label class="flex flex-col gap-2">
-              <span class="font-semibold">Métrica de intensidad *</span>
-              <select
-                class="rounded-xl border border-slate-300 px-3 py-2"
+              />
+              <app-ui-select
+                label="Métrica de intensidad *"
+                [options]="metricOptions()"
                 formControlName="primaryMetric"
-              >
-                @for (option of metricOptions(); track option.value) {
-                  <option [value]="option.value">{{ option.label }}</option>
-                }
-              </select>
-            </label>
-            <label class="flex flex-col gap-2">
-              <span class="font-semibold">Distancia planificada (km)</span>
-              <input
-                class="rounded-xl border border-slate-300 px-3 py-2"
-                type="number"
-                min="0.1"
-                step="0.1"
-                formControlName="plannedDistanceKm"
               />
-            </label>
-            <label class="flex flex-col gap-2">
-              <span class="font-semibold">Duración estimada (min)</span>
-              <input
-                class="rounded-xl border border-slate-300 px-3 py-2"
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Calculada de los pasos"
-                formControlName="estimatedDurationMinutes"
+              <label class="flex flex-col gap-1.5">
+                <span class="text-label text-text-secondary">Distancia planificada (km)</span>
+                <input
+                  class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+                  type="number"
+                  min="0.1"
+                  step="0.1"
+                  formControlName="plannedDistanceKm"
+                />
+              </label>
+              <label class="flex flex-col gap-1.5">
+                <span class="text-label text-text-secondary">Duración estimada (min)</span>
+                <input
+                  class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary placeholder:text-text-tertiary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Calculada de los pasos"
+                  formControlName="estimatedDurationMinutes"
+                />
+              </label>
+            </section>
+
+            <section
+              class="rounded-xl border border-border-default bg-bg-surface p-5 shadow-elevation-1"
+            >
+              <app-workout-step-editor
+                [(steps)]="steps"
+                [sport]="selectedSport()"
+                [primaryMetric]="selectedMetric()"
+                [zoneSet]="zoneSet()"
+                [showErrors]="hasTriedToSave()"
               />
-            </label>
+            </section>
           </div>
-        </section>
 
-        <section class="rounded-3xl bg-white p-5 text-slate-950 shadow-xl">
-          <app-workout-step-editor
-            [(steps)]="steps"
-            [sport]="selectedSport()"
-            [primaryMetric]="selectedMetric()"
-            [zoneSet]="zoneSet()"
-            [showErrors]="hasTriedToSave()"
-          />
-        </section>
+          <aside class="flex flex-col gap-6">
+            @if (zoneRows().length > 0) {
+              <section
+                aria-labelledby="zones-card-title"
+                class="flex flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-5 shadow-elevation-1"
+              >
+                <h2 id="zones-card-title" class="text-h3 text-text-primary">
+                  {{ zoneCardTitle() }}
+                </h2>
+                <ul class="flex flex-col gap-2">
+                  @for (zone of zoneRows(); track zone.id) {
+                    <li class="flex items-center justify-between gap-2">
+                      @if (zone.number) {
+                        <app-ui-zone-badge [zone]="zone.number" />
+                      }
+                      <span class="min-w-0 flex-1 truncate text-small text-text-secondary">{{
+                        zone.name
+                      }}</span>
+                      <span class="text-small text-text-primary">{{ zone.range }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            } @else {
+              <section
+                aria-labelledby="rpe-card-title"
+                class="flex flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-5 shadow-elevation-1"
+              >
+                <h2 id="rpe-card-title" class="text-h3 text-text-primary">Escala RPE</h2>
+                <p class="text-small text-text-secondary">
+                  La intensidad se mide con la percepción de esfuerzo, de 1 a 10.
+                </p>
+                <ul class="flex flex-col gap-2">
+                  @for (item of rpeScale; track item.range) {
+                    <li class="flex items-baseline justify-between gap-3">
+                      <span class="text-label text-text-primary">{{ item.range }}</span>
+                      <span class="text-right text-small text-text-secondary">{{
+                        item.description
+                      }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
 
-        <section
-          class="grid gap-5 rounded-3xl bg-white p-5 text-slate-950 shadow-xl sm:grid-cols-2"
-        >
-          <label class="flex flex-col gap-2"
-            ><span class="font-semibold">Descripción</span
-            ><textarea
-              class="rounded-xl border border-slate-300 px-3 py-2"
-              rows="5"
-              maxlength="1000"
-              formControlName="description"
-            ></textarea>
-          </label>
-          <label class="flex flex-col gap-2"
-            ><span class="font-semibold">Notas</span
-            ><textarea
-              class="rounded-xl border border-slate-300 px-3 py-2"
-              rows="5"
-              maxlength="1000"
-              formControlName="notes"
-            ></textarea>
-          </label>
-        </section>
+            <section
+              aria-labelledby="details-card-title"
+              class="flex flex-col gap-4 rounded-xl border border-border-default bg-bg-surface p-5 shadow-elevation-1"
+            >
+              <h2 id="details-card-title" class="text-h3 text-text-primary">Detalles</h2>
+              <app-ui-field label="Objetivo" formControlName="objective" />
+              <label class="flex flex-col gap-1.5">
+                <span class="text-label text-text-secondary">Descripción</span>
+                <textarea
+                  class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+                  rows="4"
+                  maxlength="1000"
+                  formControlName="description"
+                ></textarea>
+              </label>
+              <label class="flex flex-col gap-1.5">
+                <span class="text-label text-text-secondary">Notas</span>
+                <textarea
+                  class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+                  rows="4"
+                  maxlength="1000"
+                  formControlName="notes"
+                ></textarea>
+              </label>
+            </section>
+          </aside>
+        </div>
 
         @if (templateSavedMessage()) {
           <p
-            class="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-emerald-800"
+            class="rounded-xl border border-status-success bg-status-success-subtle p-4 text-status-success"
             role="status"
           >
             {{ templateSavedMessage() }}
-            <a routerLink="/library" class="font-semibold underline">Ver biblioteca</a>
+            <a routerLink="/library" class="underline">Ver biblioteca</a>
           </p>
         }
-
-        <footer
-          class="sticky bottom-0 flex flex-wrap justify-end gap-3 rounded-2xl bg-slate-900/95 p-4 shadow-xl backdrop-blur"
-        >
-          @if (!isTemplate) {
-            <button
-              type="button"
-              class="mr-auto rounded-xl border border-slate-600 px-5 py-3 font-semibold text-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-              [disabled]="saving()"
-              (click)="saveAsTemplate()"
-            >
-              Guardar como plantilla
-            </button>
-          }
-          <button
-            type="button"
-            class="rounded-xl border border-slate-600 px-5 py-3 font-semibold"
-            (click)="cancel()"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            class="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
-            [disabled]="saving()"
-          >
-            {{ saving() ? 'Guardando...' : 'Guardar' }}
-          </button>
-        </footer>
       </form>
     }
   } @placeholder {
-    <p class="rounded-2xl bg-slate-900 p-6">Cargando entrenamiento...</p>
+    <p class="rounded-xl bg-bg-surface p-6 text-text-secondary">Cargando entrenamiento...</p>
   } @error {
-    <div class="rounded-2xl border border-red-800 bg-red-950/40 p-6 text-red-200">
+    <div
+      class="rounded-xl border border-status-danger bg-status-danger-subtle p-6 text-status-danger"
+    >
       <p>{{ loadError() }}</p>
-      <a [routerLink]="backLink.path" class="mt-4 inline-block font-semibold text-cyan-200">{{
+      <a [routerLink]="backLink.path" class="mt-4 inline-block text-label underline">{{
         backLink.label
       }}</a>
     </div>

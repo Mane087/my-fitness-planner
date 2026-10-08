@@ -38,17 +38,50 @@ import {
   WORKOUT_CATEGORY_LABELS,
 } from '../../core/models/workout-labels';
 import type { Options } from '../../core/models/option';
+import { formatZoneValue, ZONE_UNITS } from '../../core/models/zone-format';
+import { calculateWorkoutTotals } from '../../core/services/workout-structure.utils';
 
 // IMPORT UTILS
+import { buildZoneSummary } from './training-session-summary';
 import { clearIncompatibleTargets } from '../../components/workout-step-editor/workout-step-operations';
 import { TrainingSessionFormFacade } from './training-session-form.facade';
 
 // IMPORT COMPONENTS
-import { AlertComponent } from '../../components/alert/alert.component';
-import { AlertType } from '../../core/models/alert';
-import { InputFormComponent } from '../../components/input-form/input-form.component';
 import { SelectComponent } from '../../components/select/select.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiFieldComponent } from '../../components/ui/ui-field/ui-field.component';
+import { UiSelectComponent } from '../../components/ui/ui-select/ui-select.component';
+import { UiTagComponent } from '../../components/ui/ui-tag/ui-tag.component';
+import { UiZoneBadgeComponent } from '../../components/ui/ui-zone-badge/ui-zone-badge.component';
 import { WorkoutStepEditorComponent } from '../../components/workout-step-editor/workout-step-editor.component';
+
+/** Static class names so Tailwind detects them. */
+const ZONE_BACKGROUND_CLASSES: Record<number, string> = {
+  1: 'bg-zone-z1',
+  2: 'bg-zone-z2',
+  3: 'bg-zone-z3',
+  4: 'bg-zone-z4',
+  5: 'bg-zone-z5',
+  6: 'bg-zone-z6',
+  7: 'bg-zone-z7',
+};
+
+const RPE_SCALE = [
+  { range: 'RPE 1–3', description: 'Muy suave, conversación fluida' },
+  { range: 'RPE 4–5', description: 'Moderado, respiración controlada' },
+  { range: 'RPE 6', description: 'Algo duro' },
+  { range: 'RPE 7–8', description: 'Duro, frases cortas' },
+  { range: 'RPE 9–10', description: 'Máximo esfuerzo' },
+];
+
+function formatClock(totalSeconds: number): string {
+  const rounded = Math.round(totalSeconds);
+  const hours = Math.floor(rounded / 3600);
+  const minutes = Math.floor((rounded % 3600) / 60);
+  const seconds = rounded % 60;
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${hours}:${pad(minutes)}:${pad(seconds)}`;
+}
 
 const SPORT_ICONS: Partial<Record<Sport, string>> = {
   [Sport.Cycling]: '/icons/road.svg',
@@ -59,9 +92,12 @@ const SPORT_ICONS: Partial<Record<Sport, string>> = {
   imports: [
     ReactiveFormsModule,
     RouterLink,
-    AlertComponent,
-    InputFormComponent,
     SelectComponent,
+    UiButtonComponent,
+    UiFieldComponent,
+    UiSelectComponent,
+    UiTagComponent,
+    UiZoneBadgeComponent,
     WorkoutStepEditorComponent,
   ],
   templateUrl: './training-session-form-page.component.html',
@@ -171,6 +207,79 @@ export class TrainingSessionFormPageComponent {
       totals.distanceKm !== null ? ` · ${Math.round(totals.distanceKm * 10) / 10} km` : '';
     return `${duration}${distance}`;
   });
+  readonly isIntervalSport = computed(() => {
+    const sport = this.selectedSport();
+    return sport !== Sport.Mobility && sport !== Sport.Plyometrics;
+  });
+  /** Figures of the summary bar. Interval sports show zones, exercise sports show sets. */
+  readonly summary = computed(() => buildZoneSummary(this.steps(), this.selectedSport()));
+  readonly durationClock = computed(() => {
+    this.formChanges();
+    const totals = this.facade.calculateTotals(
+      this.steps(),
+      this.form.controls.estimatedDurationMinutes.value,
+      this.form.controls.plannedDistanceKm.value,
+    );
+    return formatClock(totals.durationMinutes * 60);
+  });
+  readonly distanceLabel = computed(() => {
+    this.formChanges();
+    const { distanceKm } = this.facade.calculateTotals(
+      this.steps(),
+      this.form.controls.estimatedDurationMinutes.value,
+      this.form.controls.plannedDistanceKm.value,
+    );
+    return distanceKm === null ? null : String(Math.round(distanceKm * 10) / 10);
+  });
+  readonly isDurationEstimated = computed(() => {
+    this.formChanges();
+    return this.facade.calculateTotals(
+      this.steps(),
+      this.form.controls.estimatedDurationMinutes.value,
+      this.form.controls.plannedDistanceKm.value,
+    ).isEstimated;
+  });
+  readonly stepCount = computed(() => calculateWorkoutTotals(this.steps()).stepCount);
+  readonly sportChipLabel = computed(() => {
+    this.formChanges();
+    const sport = this.selectedSport();
+    const modality = this.form.controls.modality.value;
+    if (!sport) return '';
+    return modality
+      ? `${SPORT_LABELS[sport]} · ${SPORT_MODALITY_LABELS[modality]}`
+      : SPORT_LABELS[sport];
+  });
+  readonly categoryChipLabel = computed(() => {
+    this.formChanges();
+    const category = this.form.controls.category.value;
+    return category ? WORKOUT_CATEGORY_LABELS[category] : '';
+  });
+  readonly shortDateLabel = computed(() => {
+    this.formChanges();
+    return this.formatShortDate(this.form.controls.scheduledDate.value);
+  });
+  /** Zones of the selected metric with the range in the unit the user reads. */
+  readonly zoneRows = computed(() => {
+    const metric = this.selectedMetric();
+    const zoneSet = this.zoneSet();
+    if (!metric || !zoneSet) return [];
+    return zoneSet.zones.map((zone) => ({
+      id: zone.id,
+      number: Number(/^Z(\d)/i.exec(zone.name)?.[1] ?? 0) || null,
+      name: zone.name,
+      range:
+        `${formatZoneValue(zone.minValue, metric)}–${formatZoneValue(zone.maxValue, metric)} ${ZONE_UNITS[metric]}`.trim(),
+    }));
+  });
+  readonly zoneCardTitle = computed(() => {
+    const metric = this.selectedMetric();
+    return metric ? `Zonas de ${INTENSITY_METRIC_LABELS[metric].toLowerCase()}` : 'Zonas';
+  });
+  readonly rpeScale = RPE_SCALE;
+  readonly zoneBackgroundClasses = ZONE_BACKGROUND_CLASSES;
+  readonly breadcrumbRoot = this.isTemplate
+    ? { path: '/library', label: 'Biblioteca' }
+    : { path: '/calendar', label: 'Calendario' };
   readonly heading = computed(() => {
     const action = this.mode() === 'create' ? 'Crear' : 'Editar';
     return `${action} ${this.isTemplate ? 'plantilla' : 'entrenamiento'}`;
@@ -179,10 +288,6 @@ export class TrainingSessionFormPageComponent {
     this.formChanges();
     return this.formatDate(this.form.controls.scheduledDate.value);
   });
-
-  typeAlert = signal<AlertType>('toast-success');
-  showSuccessAlert = signal(false);
-  readonly alertMessage = signal('');
 
   constructor() {
     this.form.controls.sport.valueChanges
@@ -197,10 +302,6 @@ export class TrainingSessionFormPageComponent {
       this.form.controls.scheduledDate.updateValueAndValidity({ emitEvent: false });
     }
     void this.load();
-  }
-
-  closeSuccessAlert(value: boolean): void {
-    this.showSuccessAlert.set(value);
   }
 
   async save(): Promise<void> {
@@ -387,6 +488,17 @@ export class TrainingSessionFormPageComponent {
       );
       control?.focus();
     });
+  }
+
+  private formatShortDate(date: string): string {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return '';
+    const label = new Intl.DateTimeFormat('es-ES', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      timeZone: 'UTC',
+    }).format(new Date(`${date}T00:00:00Z`));
+    return label.replace(/\./g, '').replace(/^./, (letter) => letter.toUpperCase());
   }
 
   private formatDate(date: string): string {

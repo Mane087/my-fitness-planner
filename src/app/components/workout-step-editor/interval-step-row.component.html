@@ -16,7 +16,6 @@
   [class.border-l-zone-z7]="zone() === 7"
   [attr.aria-invalid]="errors().length > 0 ? 'true' : null"
   (focusin)="selected.emit()"
-  (click)="selected.emit()"
 >
   <legend class="px-2 text-h3 text-text-primary">Paso {{ position() }} · Intervalo</legend>
 
