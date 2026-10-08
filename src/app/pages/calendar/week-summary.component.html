@@ -1,0 +1,43 @@
+@let data = summary();
+<div class="flex w-full flex-col gap-1.5 sm:w-40" data-testid="week-summary-duration">
+  <span class="text-caps text-text-tertiary uppercase">Duración</span>
+  <span class="flex items-baseline gap-1">
+    <span class="font-metric text-metric-l text-text-primary">{{ data.duration.actualLabel }}</span>
+    <span class="text-small text-text-secondary">/ {{ data.duration.plannedLabel }} h</span>
+  </span>
+  <app-ui-progress [value]="data.duration.percent" ariaLabel="Duración completada de la semana" />
+</div>
+<div class="flex w-full flex-col gap-1.5 sm:w-40" data-testid="week-summary-distance">
+  <span class="text-caps text-text-tertiary uppercase">Distancia</span>
+  <span class="flex items-baseline gap-1">
+    <span class="font-metric text-metric-l text-text-primary">{{ data.distance.actualLabel }}</span>
+    <span class="text-small text-text-secondary">/ {{ data.distance.plannedLabel }} km</span>
+  </span>
+  <app-ui-progress [value]="data.distance.percent" ariaLabel="Distancia completada de la semana" />
+</div>
+<div class="flex w-full flex-col gap-1.5 sm:w-40" data-testid="week-summary-completed">
+  <span class="text-caps text-text-tertiary uppercase">Completados</span>
+  <span class="flex items-baseline gap-1">
+    <span class="font-metric text-metric-l text-text-primary">{{ data.completed.done }}</span>
+    <span class="text-small text-text-secondary">/ {{ data.completed.total }}</span>
+  </span>
+  <app-ui-progress
+    [value]="data.completed.percent"
+    ariaLabel="Entrenamientos completados de la semana"
+  />
+</div>
+@if (zoneBars().length > 0) {
+  <div class="flex min-w-0 flex-1 flex-col gap-2" data-testid="week-summary-zones">
+    <span class="text-caps text-text-tertiary uppercase">Tiempo por zona · planificado</span>
+    <div
+      class="flex h-2.5 w-full max-w-70 overflow-hidden rounded-full"
+      role="img"
+      [attr.aria-label]="data.zonesCaption"
+    >
+      @for (bar of zoneBars(); track bar.zone) {
+        <span [class]="bar.barClass" [style.width.%]="bar.percent" [attr.title]="bar.label"></span>
+      }
+    </div>
+    <span class="text-small text-text-secondary">{{ data.zonesCaption }}</span>
+  </div>
+}

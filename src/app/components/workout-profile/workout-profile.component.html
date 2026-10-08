@@ -1,0 +1,19 @@
+@if (bars().length > 0) {
+  <svg
+    class="block h-full w-full"
+    [attr.viewBox]="'0 0 ' + viewBoxSize + ' ' + viewBoxSize"
+    preserveAspectRatio="none"
+    focusable="false"
+  >
+    @for (bar of bars(); track $index) {
+      <rect
+        [attr.x]="bar.x"
+        [attr.y]="bar.y"
+        [attr.width]="bar.width"
+        [attr.height]="bar.height"
+        [attr.data-zone]="bar.zone"
+        [class]="bar.fillClass"
+      />
+    }
+  </svg>
+}

@@ -27,6 +27,11 @@ const rect = (x: number, y: number, width: number, height: number, rx: number): 
 });
 
 export const ICONS = {
+  activity: [
+    path(
+      'M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2',
+    ),
+  ],
   bike: [
     circle(18.5, 17.5, 3.5),
     circle(5.5, 17.5, 3.5),
@@ -35,10 +40,16 @@ export const ICONS = {
   ],
   calendar: [path('M8 2v4'), path('M16 2v4'), rect(3, 4, 18, 18, 2), path('M3 10h18')],
   check: [path('M20 6 9 17l-5-5')],
+  'circle-check': [circle(12, 12, 10), path('m9 12 2 2 4-4')],
   'chevron-down': [path('m6 9 6 6 6-6')],
   'chevron-left': [path('m15 18-6-6 6-6')],
   'chevron-right': [path('m9 18 6-6-6-6')],
   copy: [rect(8, 8, 14, 14, 2), path('M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2')],
+  download: [
+    path('M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'),
+    path('m7 10 5 5 5-5'),
+    path('M12 15V3'),
+  ],
   ellipsis: [circle(12, 12, 1), circle(19, 12, 1), circle(5, 12, 1)],
   'grip-vertical': [
     circle(9, 12, 1),
@@ -55,15 +66,28 @@ export const ICONS = {
     path('M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.66 0l8.58-3.9A1 1 0 0 0 22 12'),
     path('M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.66 0l8.58-3.9A1 1 0 0 0 22 17'),
   ],
+  'move-horizontal': [path('m18 8 4 4-4 4'), path('M2 12h20'), path('m6 8-4 4 4 4')],
+  'person-standing': [
+    circle(12, 5, 1),
+    path('m9 20 3-6 3 6'),
+    path('m6 8 6 2 6-2'),
+    path('M12 10v4'),
+  ],
   'loader-circle': [path('M21 12a9 9 0 1 1-6.219-8.56')],
   plus: [path('M5 12h14'), path('M12 5v14')],
   search: [circle(11, 11, 8), path('m21 21-4.3-4.3')],
+  'trending-up': [path('M16 7h6v6'), path('m22 7-8.5 8.5-5-5L2 17')],
   'trash-2': [
     path('M3 6h18'),
     path('M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6'),
     path('M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2'),
     path('M10 11v6'),
     path('M14 11v6'),
+  ],
+  upload: [
+    path('M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4'),
+    path('m17 8-5-5-5 5'),
+    path('M12 3v12'),
   ],
   user: [path('M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2'), circle(12, 7, 4)],
   x: [path('M18 6 6 18'), path('m6 6 12 12')],

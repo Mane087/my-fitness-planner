@@ -1,276 +1,262 @@
-<main class="min-h-screen bg-slate-900 px-4 py-6 text-slate-50">
-  <section class="mx-auto flex w-full flex-col gap-4 lg:max-w-3/4" aria-labelledby="calendar-title">
+<main class="min-h-dvh bg-bg-canvas px-4 py-6 text-text-primary sm:px-6 sm:py-8">
+  <section class="mx-auto flex w-full flex-col gap-5" aria-labelledby="calendar-title">
     @if (successMessage()) {
       <p
-        class="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-4 text-emerald-100"
+        class="text-body rounded-xl bg-status-success-subtle p-4 text-status-success"
         role="status"
       >
         {{ successMessage() }}
       </p>
     }
     @if (relocationError()) {
-      <p class="rounded-2xl border border-red-900/60 bg-red-950/30 p-4 text-red-200" role="alert">
+      <p class="text-body rounded-xl bg-status-danger-subtle p-4 text-status-danger" role="alert">
         {{ relocationError() }}
       </p>
     }
-    <header
-      class="flex flex-col gap-4 rounded-3xl bg-slate-800 p-5 shadow-xl shadow-slate-950/30 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div class="flex items-center gap-x-3">
-        <div
-          class="grid h-11 w-11 place-items-center rounded-full bg-primary text-sm font-bold text-legacy-fg-on-dark"
-          aria-hidden="true"
-        >
-          {{ userName().charAt(0).toLocaleUpperCase('es-ES') }}
+
+    <header class="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div class="flex flex-col gap-0.5">
+          <h1 id="calendar-title" class="text-h1 sm:text-display text-text-primary">
+            {{ title() }}
+          </h1>
+          @if (subtitle(); as subtitleText) {
+            <p class="text-body text-text-secondary">
+              {{ subtitleText }}
+              @if (view() === 'week' && week(); as currentWeek) {
+                <span class="sm:hidden">
+                  · {{ currentWeek.summary.duration.actualLabel }} /
+                  {{ currentWeek.summary.duration.plannedLabel }} h</span
+                >
+              }
+            </p>
+          }
         </div>
-        <div>
-          <p
-            id="calendar-title"
-            class="text-2xl font-semibold tracking-tight text-legacy-fg-on-dark"
-          >
-            {{ userName() }}
-          </p>
+        <div class="flex items-center gap-1">
+          <app-ui-button
+            variant="secondary"
+            icon="chevron-left"
+            [isIconOnly]="true"
+            [ariaLabel]="view() === 'week' ? 'Semana anterior' : 'Mes anterior'"
+            (pressed)="goToPrevious()"
+          />
+          <app-ui-button variant="secondary" (pressed)="goToToday()">Hoy</app-ui-button>
+          <app-ui-button
+            variant="secondary"
+            icon="chevron-right"
+            [isIconOnly]="true"
+            [ariaLabel]="view() === 'week' ? 'Semana siguiente' : 'Mes siguiente'"
+            (pressed)="goToNext()"
+          />
         </div>
       </div>
 
-      <div class="flex flex-wrap gap-2">
-        <div
-          class="flex rounded-xl border border-slate-700 p-1"
-          role="group"
-          aria-label="Vista del calendario"
-        >
-          @for (option of viewOptions; track option.value) {
-            <button
-              type="button"
-              class="rounded-lg px-3 py-1.5 text-sm font-semibold cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-400"
-              [ngClass]="
-                view() === option.value
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-700'
-              "
-              [attr.aria-pressed]="view() === option.value"
-              (click)="setView(option.value)"
-            >
-              {{ option.label }}
-            </button>
-          }
-        </div>
-        <app-button
-          label="Importar"
-          title="Importar"
-          kind="action"
-          htmlType="button"
-          variant="secondary"
+      <div class="flex flex-wrap items-center gap-3">
+        <app-ui-segmented-control
+          ariaLabel="Vista del calendario"
+          [options]="viewOptions"
+          [value]="view()"
+          (valueChange)="onViewSelected($event)"
         />
+        <div class="flex items-center gap-1">
+          <app-ui-button
+            kind="link"
+            link="/profile"
+            variant="ghost"
+            icon="upload"
+            [isIconOnly]="true"
+            ariaLabel="Exportar respaldo"
+            title="Exportar respaldo"
+          />
+          <app-ui-button
+            kind="link"
+            link="/profile"
+            variant="ghost"
+            icon="download"
+            [isIconOnly]="true"
+            ariaLabel="Importar respaldo"
+            title="Importar respaldo"
+          />
+        </div>
+        <app-ui-button kind="link" link="/library" variant="secondary" icon="layers"
+          >Plantillas</app-ui-button
+        >
+        <app-ui-button icon="plus" (pressed)="createWorkout()">Nuevo entrenamiento</app-ui-button>
       </div>
     </header>
 
     @if (isLoading()) {
-      <p class="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 text-slate-300">
+      <p class="text-body rounded-xl bg-bg-surface p-6 text-text-secondary">
         Cargando calendario...
       </p>
     } @else if (errorMessage()) {
-      <p class="rounded-2xl border border-red-900/60 bg-red-950/30 p-6 text-red-200">
+      <p class="text-body rounded-xl bg-status-danger-subtle p-6 text-status-danger">
         {{ errorMessage() }}
       </p>
     } @else if (view() === 'week' && week()) {
       @let currentWeek = week()!;
-      <section
-        class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30 sm:p-5"
-        aria-labelledby="week-range-title"
-      >
-        <div class="mb-4 flex flex-wrap items-center gap-3 border-b border-slate-800 pb-4">
-          <button
-            type="button"
-            class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-            aria-label="Semana anterior"
-            (click)="goToPreviousWeek()"
-          >
-            ‹
-          </button>
-          <h2 id="week-range-title" class="min-w-fit px-2 text-2xl font-black tracking-wide">
-            {{ currentWeek.rangeLabel }}
-          </h2>
-          <button
-            type="button"
-            class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-            aria-label="Semana siguiente"
-            (click)="goToNextWeek()"
-          >
-            ›
-          </button>
-          <button
-            type="button"
-            class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer"
-            (click)="goToCurrentWeek()"
-          >
-            Hoy
-          </button>
-        </div>
-
-        <app-calendar-week-view
-          [week]="currentWeek"
-          (opened)="openWorkout($event)"
-          (createRequested)="createWorkoutForDate($event)"
-          (relocated)="requestRelocation($event)"
-        />
-      </section>
+      <app-week-summary [summary]="currentWeek.summary" />
+      <app-calendar-week-view
+        [week]="currentWeek"
+        (opened)="openWorkout($event)"
+        (createRequested)="createWorkoutForDate($event)"
+        (relocated)="requestRelocation($event)"
+      />
     } @else if (view() === 'month' && calendar()) {
       @let month = calendar()!;
-      <section
-        class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30 sm:p-5"
-      >
-        <div
-          class="flex flex-col gap-4 border-b border-slate-800 pb-4 lg:flex-row lg:items-center lg:justify-between"
-        >
-          <div class="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-              aria-label="Mes anterior"
-              (click)="goToPreviousMonth()"
-            >
-              ‹
-            </button>
-            <h2 class="min-w-fit px-2 text-2xl font-black tracking-wide">{{ month.monthLabel }}</h2>
-            <button
-              type="button"
-              class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-400 cursor-pointer"
-              aria-label="Mes siguiente"
-              (click)="goToNextMonth()"
-            >
-              ›
-            </button>
-            <button
-              type="button"
-              class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer"
-              (click)="loadCurrentMonth()"
-            >
-              Hoy
-            </button>
+      <section aria-label="Calendario mensual" class="flex flex-col gap-3">
+        <dl class="text-small flex flex-wrap gap-x-6 gap-y-1 text-text-secondary">
+          <div class="flex gap-1.5">
+            <dt>Tiempo total</dt>
+            <dd class="font-semibold text-text-primary">{{ month.summary.totalDurationLabel }}</dd>
           </div>
-
-          <dl class="flex flex-wrap gap-3 text-sm">
-            <div class="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2">
-              <dt class="text-slate-400">Tiempo total</dt>
-              <dd class="font-semibold text-slate-50">{{ month.summary.totalDurationLabel }}</dd>
-            </div>
-            <div class="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2">
-              <dt class="text-slate-400">Distancia total</dt>
-              <dd class="font-semibold text-slate-50">{{ month.summary.totalDistanceLabel }}</dd>
-            </div>
-          </dl>
-        </div>
+          <div class="flex gap-1.5">
+            <dt>Distancia total</dt>
+            <dd class="font-semibold text-text-primary">{{ month.summary.totalDistanceLabel }}</dd>
+          </div>
+        </dl>
 
         <!-- The month grid keeps its width and scrolls inside this box on narrow screens. -->
         <div class="overflow-x-auto" data-testid="calendar-grid-scroll">
-          <div class="min-w-[760px]">
-            <div class="calendar-grid">
+          <div class="flex min-w-[900px] flex-col gap-1">
+            <div class="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,0.9fr)] gap-1">
               @for (weekday of month.weekdays; track weekday) {
-                <div
-                  class="px-2 py-3 text-center text-xs font-bold uppercase tracking-wide text-slate-400"
-                >
-                  {{ weekday }}
+                <div class="text-caps px-2 text-text-tertiary uppercase">
+                  {{ weekday.slice(0, 3) }}
                 </div>
               }
+              <div class="text-caps px-2 text-text-tertiary uppercase">Semana</div>
             </div>
 
-            <div
-              class="calendar-grid max-h-[calc(100vh-20rem)] overflow-y-auto rounded-2xl border border-slate-800"
-            >
-              @for (week of month.weeks; track $index) {
+            @for (week of month.weeks; track $index) {
+              @let weekTotal = month.weekTotals[$index];
+              <div class="grid grid-cols-[repeat(7,minmax(0,1fr))_minmax(0,0.9fr)] gap-1">
                 @for (day of week; track day.date) {
                   <article
-                    class="day-cell group"
-                    [ngClass]="{
-                      'opacity-45': !day.isCurrentMonth,
-                      'ring-1 ring-blue-400/80': day.isToday,
-                    }"
+                    class="group flex min-h-33 min-w-0 flex-col gap-1.5 rounded-lg border p-1.5"
+                    [class]="
+                      day.isToday
+                        ? 'border-accent-default bg-bg-surface'
+                        : day.isCurrentMonth
+                          ? 'border-border-default bg-bg-surface'
+                          : 'border-border-default bg-bg-canvas'
+                    "
                   >
-                    <div class="mb-2 flex items-start justify-between gap-2">
+                    <div class="flex items-center justify-between gap-2 px-0.5">
                       <span
-                        class="grid h-7 w-7 place-items-center rounded-full text-sm font-bold"
-                        [ngClass]="day.isToday ? 'bg-blue-500 text-white' : 'text-slate-200'"
+                        class="text-body grid h-6 min-w-6 place-items-center font-semibold"
+                        [class]="
+                          day.isToday
+                            ? 'rounded-full bg-accent-default text-text-on-accent'
+                            : day.isCurrentMonth
+                              ? 'text-text-primary'
+                              : 'text-text-tertiary'
+                        "
                       >
                         {{ day.dayOfMonth }}
                       </span>
                       <button
                         type="button"
-                        class="rounded-full border border-slate-700 px-2 py-1 text-xs text-slate-300 opacity-80 hover:border-blue-400 hover:text-blue-200 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-blue-400 sm:opacity-0 sm:group-hover:opacity-100 cursor-pointer"
+                        class="grid size-6 cursor-pointer place-items-center rounded-md text-text-tertiary opacity-0 transition-opacity group-hover:opacity-100 hover:bg-accent-subtle hover:text-text-accent focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-accent-muted"
                         [attr.aria-label]="'Agregar entrenamiento el ' + day.date"
                         (click)="createWorkoutForDate(day.date)"
                       >
-                        +
+                        <app-ui-icon name="plus" [size]="14" />
                       </button>
                     </div>
 
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-1">
                       @for (workout of day.workouts; track workout.id) {
-                        <app-workout-card [workout]="workout" (opened)="openWorkout($event)" />
+                        <app-month-workout-chip
+                          [workout]="workout"
+                          (opened)="openWorkout($event)"
+                        />
                       }
 
                       @if (day.hiddenWorkoutCount > 0) {
-                        <span class="text-xs font-semibold text-blue-200"
+                        <span class="text-label px-1 text-text-accent"
                           >+{{ day.hiddenWorkoutCount }} más</span
                         >
                       }
                     </div>
                   </article>
                 }
-              }
-            </div>
+
+                <div
+                  class="flex min-w-0 flex-col gap-1.5 rounded-lg bg-bg-subtle p-2.5"
+                  [attr.data-testid]="'week-total-' + weekTotal.weekNumber"
+                >
+                  <span class="text-caps text-text-tertiary">S{{ weekTotal.weekNumber }}</span>
+                  <span class="flex items-baseline gap-1">
+                    <span class="font-metric text-metric-m text-text-primary">{{
+                      weekTotal.duration.actualLabel
+                    }}</span>
+                    <span class="text-small text-text-secondary"
+                      >/ {{ weekTotal.duration.plannedLabel }} h</span
+                    >
+                  </span>
+                  <app-ui-progress
+                    [value]="weekTotal.duration.percent"
+                    [tone]="
+                      weekTotal.plannedCount > 0 &&
+                      weekTotal.completedCount === weekTotal.plannedCount
+                        ? 'success'
+                        : 'accent'
+                    "
+                    [ariaLabel]="'Duración completada de la semana ' + weekTotal.weekNumber"
+                  />
+                  <span class="text-small text-text-secondary"
+                    >{{ weekTotal.completedCount }} / {{ weekTotal.plannedCount }} completados</span
+                  >
+                </div>
+              </div>
+            }
           </div>
         </div>
       </section>
     }
 
-    <section
-      class="rounded-3xl border border-slate-800 bg-slate-950/70 p-4 shadow-xl shadow-slate-950/30 sm:p-5"
-      aria-labelledby="weekly-summary-title"
-      data-testid="weekly-summary"
-    >
+    <app-ui-card aria-labelledby="weekly-summary-title" data-testid="weekly-summary">
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h2 id="weekly-summary-title" class="text-xl font-bold">
+        <h2 id="weekly-summary-title" class="text-h2">
           Resumen semanal
           @if (weeklySummary(); as summary) {
-            <span class="font-normal text-slate-300">· {{ summary.rangeLabel }}</span>
+            <span class="font-normal text-text-secondary">· {{ summary.rangeLabel }}</span>
           }
         </h2>
         <!-- In the week view the summary follows the week shown above. -->
         @if (view() === 'month') {
-          <div class="flex gap-2">
-            <button
-              type="button"
-              class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
-              aria-label="Semana anterior"
-              (click)="goToPreviousWeek()"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              class="rounded-xl border border-slate-700 px-3 py-2 text-slate-200 hover:bg-slate-800 cursor-pointer"
-              aria-label="Semana siguiente"
-              (click)="goToNextWeek()"
-            >
-              ›
-            </button>
+          <div class="flex gap-1">
+            <app-ui-button
+              variant="secondary"
+              icon="chevron-left"
+              [isIconOnly]="true"
+              ariaLabel="Semana anterior"
+              (pressed)="goToPreviousWeek()"
+            />
+            <app-ui-button
+              variant="secondary"
+              icon="chevron-right"
+              [isIconOnly]="true"
+              ariaLabel="Semana siguiente"
+              (pressed)="goToNextWeek()"
+            />
           </div>
         }
       </div>
 
       @if (weeklySummaryError()) {
-        <p class="mt-4 text-red-200" role="alert">{{ weeklySummaryError() }}</p>
+        <p class="text-body mt-4 text-status-danger" role="alert">{{ weeklySummaryError() }}</p>
       } @else if (weeklySummary(); as summary) {
         <div class="mt-4 overflow-x-auto">
-          <table class="w-full min-w-160 text-left text-sm">
+          <table class="text-body w-full min-w-160 text-left">
             <caption class="sr-only">
               Planeado contra realizado del
               {{
                 summary.rangeLabel
               }}
             </caption>
-            <thead class="text-slate-400">
+            <thead class="text-caps text-text-tertiary uppercase">
               <tr>
                 <th scope="col" class="py-2 pr-3">Grupo</th>
                 <th scope="col" class="py-2 pr-3">Completados</th>
@@ -294,13 +280,16 @@
                     <th
                       scope="rowgroup"
                       colspan="7"
-                      class="pt-3 text-xs font-bold uppercase tracking-wide text-slate-500"
+                      class="text-caps pt-3 text-left text-text-tertiary uppercase"
                     >
                       {{ group.title }}
                     </th>
                   </tr>
                   @for (row of group.rows; track row.key) {
-                    <tr class="border-t border-slate-800" [attr.data-testid]="'summary-' + row.key">
+                    <tr
+                      class="border-t border-border-default"
+                      [attr.data-testid]="'summary-' + row.key"
+                    >
                       <th scope="row" class="py-2 pr-3 font-semibold">{{ row.label }}</th>
                       <td class="py-2 pr-3">{{ row.sessionsLabel }}</td>
                       <td class="py-2 pr-3">{{ row.plannedDurationLabel }}</td>
@@ -314,7 +303,7 @@
               }
             </tbody>
             <tfoot>
-              <tr class="border-t-2 border-slate-600 font-bold" data-testid="summary-total">
+              <tr class="border-t-2 border-border-strong font-bold" data-testid="summary-total">
                 <th scope="row" class="py-2 pr-3">{{ summary.totals.label }}</th>
                 <td class="py-2 pr-3">{{ summary.totals.sessionsLabel }}</td>
                 <td class="py-2 pr-3">{{ summary.totals.plannedDurationLabel }}</td>
@@ -327,7 +316,7 @@
           </table>
         </div>
       }
-    </section>
+    </app-ui-card>
   </section>
 
   <app-workout-detail-modal
@@ -338,33 +327,20 @@
     (relocated)="requestRelocation($event)"
   />
 
-  <app-modal
-    [showModal]="pendingRelocation() !== null"
-    labelledBy="relocation-title"
+  <app-ui-dialog
+    title="¿Mover un entrenamiento completado?"
+    [isOpen]="pendingRelocation() !== null"
     (dismissed)="cancelRelocation()"
   >
     @if (pendingRelocation(); as relocation) {
-      <h2 id="relocation-title" class="text-xl font-bold">¿Mover un entrenamiento completado?</h2>
-      <p class="mt-2 text-sm text-slate-600">
+      <p>
         "{{ relocation.workout.title }}" ya está completado. Si lo mueves al
         {{ pendingRelocationDate() }}, conserva su registro de ejecución.
       </p>
-      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          class="rounded-lg border border-slate-300 px-4 py-2 font-semibold"
-          (click)="cancelRelocation()"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white"
-          (click)="confirmRelocation()"
-        >
-          Mover
-        </button>
-      </div>
     }
-  </app-modal>
+    <div dialogFooter class="flex flex-col-reverse gap-3 sm:flex-row">
+      <app-ui-button variant="secondary" (pressed)="cancelRelocation()">Cancelar</app-ui-button>
+      <app-ui-button (pressed)="confirmRelocation()">Mover</app-ui-button>
+    </div>
+  </app-ui-dialog>
 </main>

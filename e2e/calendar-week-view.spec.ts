@@ -20,12 +20,12 @@ async function createWorkout(page: Page, title: string): Promise<void> {
 }
 
 async function openWeekView(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Semana', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Semana', exact: true })).toHaveAttribute(
-    'aria-pressed',
+  await page.getByRole('radio', { name: 'Semana', exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'Semana', exact: true })).toHaveAttribute(
+    'aria-checked',
     'true',
   );
-  await expect(page.getByRole('heading', { name: '3 mar al 9 mar', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Semana 10', exact: true })).toBeVisible();
 }
 
 const day = (page: Page, date: string) => page.getByTestId(`week-day-${date}`);
@@ -54,14 +54,44 @@ test.describe('Calendar week view', () => {
 
     // The chosen view is stored, and the month view shows the same workouts.
     await page.reload();
-    await expect(page.getByRole('button', { name: 'Semana', exact: true })).toHaveAttribute(
-      'aria-pressed',
+    await expect(page.getByRole('radio', { name: 'Semana', exact: true })).toHaveAttribute(
+      'aria-checked',
       'true',
     );
     await expect(day(page, '2025-03-08').getByRole('button', planned)).toBeVisible();
-    await page.getByRole('button', { name: 'Mes', exact: true }).click();
-    await expect(page.getByRole('heading', { name: /MARZO/ })).toBeVisible();
+    await page.getByRole('radio', { name: 'Mes', exact: true }).click();
+    await expect(page.getByRole('heading', { name: /Marzo/ })).toBeVisible();
     await expect(page.getByRole('button', planned)).toHaveCount(2);
+  });
+
+  test('shows the profile of each workout and the week summary', async ({ page }) => {
+    await createWorkout(page, 'Rodada con perfil');
+    await openWeekView(page);
+
+    const card = day(page, WORKOUT_DATE).getByRole('button', {
+      name: 'Rodada con perfil, Planeado',
+    });
+    await expect(card.locator('app-workout-profile rect')).toHaveCount(1);
+    await expect(card).toContainText('1:00');
+    await expect(page.getByTestId('week-summary-duration')).toContainText('0:00');
+    await expect(page.getByTestId('week-summary-duration')).toContainText('/ 1:00 h');
+    await expect(page.getByTestId('week-summary-completed')).toContainText('/ 1');
+    await expect(day(page, '2025-03-05')).toContainText('Descanso');
+  });
+
+  test('shows the drop zone while dragging a workout over another day', async ({ page }) => {
+    await createWorkout(page, 'Rodada arrastrada');
+    await openWeekView(page);
+
+    const source = day(page, WORKOUT_DATE).getByRole('button', {
+      name: 'Rodada arrastrada, Planeado',
+    });
+    const dataTransfer = await page.evaluateHandle(() => new DataTransfer());
+    await source.dispatchEvent('dragstart', { dataTransfer });
+    await day(page, '2025-03-06').dispatchEvent('dragover', { dataTransfer });
+
+    await expect(day(page, '2025-03-06')).toContainText('Soltar para mover');
+    await expect(day(page, '2025-03-06')).toContainText('Mantén Alt para copiar');
   });
 
   test('asks before moving a completed workout', async ({ page }) => {

@@ -8,8 +8,11 @@ import type {
   CalendarDayViewModel,
   CalendarMonthSummaryViewModel,
   CalendarMonthViewModel,
+  CalendarWeekTotalViewModel,
   CalendarWeekViewModel,
   CalendarWorkoutCardViewModel,
+  ProgressTotalViewModel,
+  WeekHeaderSummaryViewModel,
   WeeklySummaryRowViewModel,
   WeeklySummaryViewModel,
 } from '../models/calendar-view-models';
@@ -20,14 +23,19 @@ import {
   WORKOUT_CATEGORY_LABELS,
   WORKOUT_STATUS_LABELS,
 } from '../models/workout-labels';
+import { buildWorkoutProfile, sumSecondsByZone } from '../models/workout-profile';
 import { AppSettingsRepository } from '../repositories/app-settings.repository';
 import { AthleteProfileRepository } from '../repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 import { CalendarDateService } from './calendar-date.service';
+import { formatClock } from './shell-week-summary.service';
+import { calculateWorkoutTotals } from './workout-structure.utils';
 import { TrainingCalendarService } from './training-calendar.service';
 import { summarize, WeeklySummaryService, type SummaryTotals } from './weekly-summary.service';
 
 const MAX_VISIBLE_WORKOUTS_PER_DAY = 3;
+/** Zones from this number on count as high intensity in the week summary. */
+const HIGH_INTENSITY_FIRST_ZONE = 4;
 
 @Injectable({ providedIn: 'root' })
 export class CalendarFacade {
@@ -64,6 +72,16 @@ export class CalendarFacade {
       visibleEndDate: endDate,
       weekdays: this.calendarDate.getWeekdays(weekStartsOn),
       weeks,
+      weekTotals: weeks.map((week) =>
+        this.toWeekTotal(
+          week[0].date,
+          workouts.filter(
+            (workout) =>
+              workout.scheduledDate >= week[0].date && workout.scheduledDate <= week[6].date,
+          ),
+        ),
+      ),
+      weekNumbersLabel: this.formatWeekNumbers(weeks.map((week) => week[0].date)),
       summary: this.buildSummary(workouts, year, month),
       userName,
     };
@@ -83,6 +101,9 @@ export class CalendarFacade {
       startDate,
       endDate,
       rangeLabel: this.formatRange(startDate, endDate),
+      weekNumber: this.calendarDate.getWeekNumberFromStart(startDate),
+      longRangeLabel: this.calendarDate.formatLongRange(startDate, endDate),
+      summary: this.toWeekHeaderSummary(workouts),
       days: this.calendarDate.getWeekdays(weekStartsOn).map((weekdayLabel, index) => {
         const date = this.calendarDate.shiftDate(startDate, index);
         const dayWorkouts = workouts.filter((workout) => workout.scheduledDate === date);
@@ -92,8 +113,10 @@ export class CalendarFacade {
           date,
           weekdayLabel,
           dateLabel: this.calendarDate.formatShortDate(date),
+          dayOfMonth: this.calendarDate.parseDateOnly(date).getUTCDate(),
           isToday: date === today,
           workouts: dayWorkouts.map((workout) => this.toWorkoutCard(workout)),
+          plannedClock: dayWorkouts.length > 0 ? formatClock(totals.plannedSeconds) : '',
           plannedLabel: this.formatTotals(totals.plannedSeconds, totals.plannedMeters),
           actualLabel:
             totals.completedSessions > 0
@@ -247,7 +270,88 @@ export class CalendarFacade {
           ? this.calendarDate.formatDistance(metersToKm(actualMeters))
           : null,
       hasPlannedDistance: workout.plannedDistanceMeters !== undefined,
+      steps: workout.steps,
+      durationClock: formatClock(workout.plannedDurationSeconds),
+      distanceKmLabel:
+        workout.plannedDistanceMeters === undefined
+          ? null
+          : formatKm(workout.plannedDistanceMeters),
+      summaryText: this.toSummaryText(workout),
+      dominantZone: dominantZone(workout),
     };
+  }
+
+  /** Workouts that cannot draw a profile show how many exercises they have. */
+  private toSummaryText(workout: ScheduledWorkoutEntity): string | null {
+    if (buildWorkoutProfile(workout.steps, workout.sport).length > 0) return null;
+
+    const { stepCount } = calculateWorkoutTotals(workout.steps);
+    return stepCount === 1 ? '1 ejercicio' : `${stepCount} ejercicios`;
+  }
+
+  private toProgress(
+    actual: number,
+    planned: number,
+    format: (value: number) => string,
+  ): ProgressTotalViewModel {
+    return {
+      actualLabel: format(actual),
+      plannedLabel: format(planned),
+      percent: planned > 0 ? Math.min(100, Math.round((actual / planned) * 100)) : 0,
+    };
+  }
+
+  private toWeekTotal(
+    startDate: string,
+    workouts: ScheduledWorkoutEntity[],
+  ): CalendarWeekTotalViewModel {
+    const totals = summarize(workouts);
+
+    return {
+      weekNumber: this.calendarDate.getWeekNumberFromStart(startDate),
+      duration: this.toProgress(totals.actualSeconds, totals.plannedSeconds, formatClock),
+      completedCount: totals.completedSessions,
+      plannedCount: totals.sessions,
+    };
+  }
+
+  private toWeekHeaderSummary(workouts: ScheduledWorkoutEntity[]): WeekHeaderSummaryViewModel {
+    const totals = summarize(workouts);
+    const secondsByZone = new Map<number, number>();
+
+    for (const workout of workouts) {
+      for (const [zone, seconds] of sumSecondsByZone(workout.steps, workout.sport)) {
+        secondsByZone.set(zone, (secondsByZone.get(zone) ?? 0) + seconds);
+      }
+    }
+
+    const zoneTotal = [...secondsByZone.values()].reduce((sum, seconds) => sum + seconds, 0);
+    const zones = [...secondsByZone]
+      .sort(([first], [second]) => first - second)
+      .map(([zone, seconds]) => ({ zone, percent: (seconds / zoneTotal) * 100 }));
+    const [top] = [...zones].sort((first, second) => second.percent - first.percent);
+    const highIntensityPercent = zones
+      .filter((share) => share.zone >= HIGH_INTENSITY_FIRST_ZONE)
+      .reduce((sum, share) => sum + share.percent, 0);
+
+    return {
+      duration: this.toProgress(totals.actualSeconds, totals.plannedSeconds, formatClock),
+      distance: this.toProgress(totals.actualMeters, totals.plannedMeters, formatKm),
+      completed: {
+        done: totals.completedSessions,
+        total: totals.sessions,
+        percent: totals.sessions > 0 ? (totals.completedSessions / totals.sessions) * 100 : 0,
+      },
+      zones,
+      zonesCaption: top
+        ? `Z${top.zone} domina la semana (${Math.round(top.percent)} %). Intensidad alta: ${Math.round(highIntensityPercent)} %.`
+        : null,
+    };
+  }
+
+  private formatWeekNumbers(weekStarts: string[]): string {
+    const numbers = weekStarts.map((date) => this.calendarDate.getWeekNumberFromStart(date));
+    return `Semanas ${numbers[0]} – ${numbers[numbers.length - 1]}`;
   }
 
   private toSummaryRow(
@@ -325,6 +429,20 @@ export class CalendarFacade {
       totalWorkouts: currentMonthWorkouts.length,
     };
   }
+}
+
+/** Zone with the most planned time, or null when no step has a zone. */
+function dominantZone(workout: ScheduledWorkoutEntity): number | null {
+  const [top] = [...sumSecondsByZone(workout.steps, workout.sport)].sort(
+    ([, first], [, second]) => second - first,
+  );
+  return top ? top[0] : null;
+}
+
+/** Kilometers without unit: whole numbers stay whole, otherwise one decimal. */
+function formatKm(meters: number): string {
+  const km = meters / 1000;
+  return Number.isInteger(km) ? km.toFixed(0) : km.toFixed(1);
 }
 
 function secondsToMinutes(seconds: number): number {

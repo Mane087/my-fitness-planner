@@ -1,47 +1,44 @@
 @let card = workout();
 <button
   type="button"
-  class="workout-card border-l-4 text-left"
-  [ngClass]="card.colorClass"
-  [class.opacity-60]="card.status === 'skipped'"
+  [class]="classes()"
   [attr.aria-label]="card.title + ', ' + card.statusLabel"
   (click)="opened.emit(card.id)"
 >
-  <span class="text-[0.65rem] font-bold uppercase tracking-wide text-slate-400"
-    >{{ card.sportLabel }} · {{ card.categoryLabel }}</span
-  >
+  <span class="flex w-full items-center gap-1.5 text-text-tertiary">
+    <app-ui-icon [name]="sportIcon()" [size]="layout() === 'day' ? 16 : 14" />
+    <span class="text-caps min-w-0 truncate">{{ card.categoryLabel }}</span>
+    @if (isCompleted()) {
+      <app-ui-icon name="circle-check" [size]="14" class="ml-auto text-status-success" />
+    }
+  </span>
   <span
-    class="block truncate text-xs font-semibold text-slate-50"
-    [class.line-through]="card.status === 'skipped'"
+    class="break-words text-text-primary"
+    [class]="layout() === 'day' ? 'text-h3' : 'text-body font-semibold'"
     >{{ card.title }}</span
   >
-  @if (card.status !== 'planned') {
-    <span
-      class="mt-0.5 inline-block rounded-full px-1.5 text-[0.65rem] font-bold"
-      [ngClass]="
-        card.status === 'completed'
-          ? 'bg-emerald-900 text-emerald-200'
-          : 'bg-slate-700 text-slate-200'
-      "
-      >{{ card.status === 'completed' ? '✓ ' : '' }}{{ card.statusLabel }}</span
-    >
+  @if (card.summaryText) {
+    <span class="text-label w-full rounded-md bg-bg-subtle px-2 py-1.5 text-text-secondary">{{
+      card.summaryText
+    }}</span>
+  } @else {
+    <app-workout-profile [class]="profileClass()" [steps]="card.steps" [sport]="card.sport" />
   }
-  <span class="block text-[0.7rem] text-slate-300">
-    @if (card.actualDurationLabel) {
-      Tiempo: {{ card.actualDurationLabel }} de
-      {{ card.durationLabel }}
-    } @else {
-      Tiempo: {{ card.durationLabel }}
+  <span class="flex items-baseline gap-1.5">
+    <span class="font-metric text-metric-m text-text-primary">{{ card.durationClock }}</span>
+    @if (card.distanceKmLabel) {
+      <span class="text-small text-text-secondary">{{ card.distanceKmLabel }} km</span>
     }
   </span>
-  <span class="block text-[0.7rem] text-slate-300">
-    @if (card.actualDistanceLabel && card.hasPlannedDistance) {
-      Distancia: {{ card.actualDistanceLabel }} de
-      {{ card.distanceLabel }}
-    } @else if (card.actualDistanceLabel) {
-      Distancia: {{ card.actualDistanceLabel }}
-    } @else {
-      Distancia: {{ card.distanceLabel }}
-    }
-  </span>
+  @if (card.actualDurationLabel) {
+    <span class="text-small text-text-secondary">
+      Real: {{ card.actualDurationLabel }}
+      @if (card.actualDistanceLabel) {
+        · {{ card.actualDistanceLabel }}
+      }
+    </span>
+  }
+  @if (isSkipped()) {
+    <span class="text-label text-text-tertiary">{{ card.statusLabel }}</span>
+  }
 </button>

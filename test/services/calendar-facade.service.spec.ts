@@ -16,7 +16,13 @@ import { AthleteProfileRepository } from '../../src/app/core/repositories/athlet
 import { ScheduledWorkoutRepository } from '../../src/app/core/repositories/scheduled-workout.repository';
 import { CalendarFacade } from '../../src/app/core/services/calendar-facade.service';
 import { TrainingCalendarService } from '../../src/app/core/services/training-calendar.service';
-import { scheduledWorkout } from '../domain/fixtures';
+import {
+  exercise,
+  heartRateSnapshot,
+  heartRateTarget,
+  interval,
+  scheduledWorkout,
+} from '../domain/fixtures';
 
 describe('CalendarFacade', () => {
   let facade: CalendarFacade;
@@ -392,6 +398,115 @@ describe('CalendarFacade', () => {
     });
   });
 
+  it('arma el resumen de la semana con progreso, completados y tiempo por zona', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'done',
+        scheduledDate: '2026-05-04',
+        status: 'completed',
+        plannedDurationSeconds: 3600,
+        plannedDistanceMeters: 30_000,
+        completion: { completedAt: '2026-05-04T10:00:00.000Z', durationSeconds: 1800 },
+        steps: [zonedInterval('a', 1800, 2), zonedInterval('b', 1800, 4)],
+      }),
+      buildWorkout({
+        id: 'pending',
+        scheduledDate: '2026-05-06',
+        plannedDurationSeconds: 3600,
+        plannedDistanceMeters: 50_000,
+        steps: [zonedInterval('c', 3600, 2)],
+      }),
+    ]);
+
+    const { summary, weekNumber, longRangeLabel } = await facade.loadWeek('2026-05-05');
+
+    expect(weekNumber).toBe(19);
+    expect(longRangeLabel).toBe('4 – 10 de mayo de 2026');
+    expect(summary.duration).toEqual({ actualLabel: '0:30', plannedLabel: '2:00', percent: 25 });
+    expect(summary.distance).toEqual({ actualLabel: '30', plannedLabel: '80', percent: 38 });
+    expect(summary.completed).toEqual({ done: 1, total: 2, percent: 50 });
+    expect(summary.zones.map((share) => share.zone)).toEqual([2, 4]);
+    expect(summary.zones[0].percent).toBeCloseTo(75);
+    expect(summary.zonesCaption).toBe('Z2 domina la semana (75 %). Intensidad alta: 25 %.');
+  });
+
+  it('deja el resumen de zonas vacío cuando ningún paso tiene zona', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([]);
+
+    const { summary } = await facade.loadWeek('2026-05-05');
+
+    expect(summary.zones).toEqual([]);
+    expect(summary.zonesCaption).toBeNull();
+    expect(summary.duration.percent).toBe(0);
+  });
+
+  it('muestra el reloj, el perfil y el texto de ejercicios en cada tarjeta', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'ride',
+        scheduledDate: '2026-05-04',
+        plannedDurationSeconds: 4800,
+        plannedDistanceMeters: 38_500,
+        steps: [zonedInterval('a', 4800, 2)],
+      }),
+      buildWorkout({
+        id: 'mobility',
+        scheduledDate: '2026-05-04',
+        sport: Sport.Mobility,
+        plannedDurationSeconds: 1200,
+        steps: [exercise('e1'), exercise('e2')],
+      }),
+    ]);
+
+    const [ride, mobility] = (await facade.loadWeek('2026-05-05')).days[0].workouts;
+
+    expect(ride.durationClock).toBe('1:20');
+    expect(ride.distanceKmLabel).toBe('38.5');
+    expect(ride.summaryText).toBeNull();
+    expect(ride.dominantZone).toBe(2);
+    expect(mobility.summaryText).toBe('2 ejercicios');
+    expect(mobility.distanceKmLabel).toBeNull();
+    expect(mobility.dominantZone).toBeNull();
+  });
+
+  it('suma lo planeado y lo completado por fila del mes con su número de semana', async () => {
+    athleteProfileRepository.getActiveProfile.mockResolvedValue(buildProfile());
+    appSettingsRepository.getSettings.mockResolvedValue(buildSettings());
+    scheduledWorkoutRepository.findByDateRange.mockResolvedValue([
+      buildWorkout({
+        id: 'a',
+        scheduledDate: '2026-05-04',
+        status: 'completed',
+        plannedDurationSeconds: 3600,
+        completion: { completedAt: '2026-05-04T10:00:00.000Z' },
+      }),
+      buildWorkout({ id: 'b', scheduledDate: '2026-05-05', plannedDurationSeconds: 1800 }),
+    ]);
+
+    const month = await facade.loadMonth('2026-05-15');
+
+    expect(month.weekTotals).toHaveLength(month.weeks.length);
+    expect(month.weekNumbersLabel).toBe('Semanas 18 – 23');
+    expect(month.weekTotals[0]).toEqual({
+      weekNumber: 18,
+      duration: { actualLabel: '0:00', plannedLabel: '0:00', percent: 0 },
+      completedCount: 0,
+      plannedCount: 0,
+    });
+    expect(month.weekTotals[1]).toEqual({
+      weekNumber: 19,
+      duration: { actualLabel: '1:00', plannedLabel: '1:30', percent: 67 },
+      completedCount: 1,
+      plannedCount: 2,
+    });
+  });
+
   it('delega moveWorkout en TrainingCalendarService', async () => {
     const moved = buildWorkout({ id: 'workout-1', scheduledDate: '2026-05-20' });
     trainingCalendarService.moveWorkout.mockResolvedValue(moved);
@@ -452,5 +567,14 @@ function buildWorkout(overrides: Partial<ScheduledWorkoutEntity> = {}): Schedule
     createdAt: '2026-01-01T00:00:00.000Z',
     updatedAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
+  });
+}
+
+function zonedInterval(id: string, seconds: number, zoneNumber: number) {
+  return interval(id, {
+    duration: { type: 'time', seconds },
+    target: heartRateTarget({
+      zoneSnapshot: heartRateSnapshot({ name: `Z${zoneNumber} Zona` }),
+    }),
   });
 }
