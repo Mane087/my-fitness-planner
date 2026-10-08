@@ -96,6 +96,23 @@ Los componentes de `components/ui/` usan el prefijo `app-ui-*` y solo tokens sem
 
 El calendario tiene dos vistas, mes y semana. La vista elegida se guarda en `AppSettings.calendarDefaultView` y es la que se abre la siguiente vez. En la vista semanal, el resumen semanal sigue a la semana visible; en la vista mensual, el resumen tiene su propia navegación.
 
+Presentación (issue #31):
+
+- **Encabezado**: número de semana y rango (o mes y semanas visibles), navegación anterior / Hoy / siguiente, selector Semana | Mes (`ui-segmented-control`), accesos a Exportar e Importar respaldo (llevan a `/profile`, donde está `BackupSection`), Plantillas y Nuevo entrenamiento.
+- **Resumen de la semana** (`WeekSummaryComponent`): duración, distancia y completados como real contra planeado con barras de progreso, y el tiempo planeado por zona. Los datos salen de `CalendarFacade.loadWeek` (`CalendarWeekViewModel.summary`). La tabla "Resumen semanal" por deporte y categoría se conserva debajo. La carga (TSS) no se muestra hasta definir su modelo.
+- **Tarjeta de entrenamiento** (`WorkoutCardComponent`): icono del deporte, categoría, título, perfil, duración (`h:mm`) y distancia. Completado tiene borde izquierdo verde y check; omitido se atenúa. Los entrenamientos de ejercicios muestran `N ejercicios` en lugar del perfil.
+- **Vista semanal**: desde 1024 px son siete columnas con arrastre y la zona "Soltar para mover · Mantén Alt para copiar". Por debajo es una tira de días con un punto de zona por entrenamiento y la lista del día elegido (`injectMediaQuery` cambia la plantilla para no duplicar el contenido en el DOM).
+- **Vista mensual**: chips compactos (`MonthWorkoutChipComponent`) y una columna por semana con tiempo real contra planeado y completados. En pantallas angostas la cuadrícula se desplaza dentro de su caja.
+
+### Perfil del entrenamiento
+
+`WorkoutProfileComponent` (`components/workout-profile/`) dibuja un SVG de solo lectura a partir de `steps`. La geometría está en `core/models/workout-profile.ts` (`buildWorkoutProfile`):
+
+- Un bloque por paso de intervalo, en orden de ejecución (los grupos de repetición se expanden).
+- El ancho es proporcional al tiempo del paso. Un paso por distancia no tiene tiempo y usa una estimación según el deporte (`SECONDS_PER_METER`); un paso abierto cuenta 5 minutos.
+- El color sale del número de zona del `zoneSnapshot` (el nombre empieza con `Z<n>`) y la altura crece con la zona. Un objetivo RPE se reparte en las siete zonas; un paso sin objetivo es gris y bajo.
+- Un entrenamiento sin pasos de intervalo (solo ejercicios) no dibuja perfil.
+
 Mover y copiar entrenamientos (`TrainingCalendarService.moveWorkout` y `copyWorkout`, a través de `CalendarFacade`):
 
 - En la vista semanal, con el mouse, se arrastra la tarjeta a otro día con drag & drop nativo de HTML5. Si se mantiene Ctrl o Alt al soltarla, se copia en lugar de moverse. No se usa Angular CDK para no agregar una dependencia: el drag & drop nativo no funciona bien en pantallas táctiles, pero el caso táctil ya se cubre con las acciones del detalle.
