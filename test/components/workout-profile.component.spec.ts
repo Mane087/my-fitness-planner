@@ -7,11 +7,14 @@ import { heartRateSnapshot, heartRateTarget, interval } from '../domain/fixtures
 
 @Component({
   imports: [WorkoutProfileComponent],
-  template: '<app-workout-profile [steps]="steps()" [label]="label()" />',
+  template:
+    '<app-workout-profile [steps]="steps()" [label]="label()" [isDetailed]="isDetailed()" [(selectedStepId)]="selectedStepId" />',
 })
 class WorkoutProfileHostComponent {
   readonly steps = signal<WorkoutStep[]>([]);
   readonly label = signal<string | null>(null);
+  readonly isDetailed = signal(false);
+  readonly selectedStepId = signal<string | null>(null);
 }
 
 function zoned(id: string, seconds: number, zoneNumber: number): WorkoutStep {
@@ -80,5 +83,38 @@ describe('WorkoutProfileComponent', () => {
     expect(profile.getAttribute('role')).toBe('img');
     expect(profile.getAttribute('aria-label')).toBe('Perfil del entrenamiento');
     expect(profile.getAttribute('aria-hidden')).toBeNull();
+  });
+
+  describe('detailed mode', () => {
+    beforeEach(() => {
+      host.isDetailed.set(true);
+      host.steps.set([zoned('a', 300, 1), zoned('b', 900, 4)]);
+      fixture.detectChanges();
+    });
+
+    const blocks = () => Array.from(element.querySelectorAll<HTMLButtonElement>('button'));
+
+    it('shows the zone axis and the time axis', () => {
+      expect(element.textContent).toContain('Z1');
+      expect(element.textContent).toContain('Z7');
+      expect(element.textContent).toContain('0:00');
+      expect(element.textContent).toContain('20:00');
+    });
+
+    it('selects a step when its block is clicked', () => {
+      blocks()[1].click();
+      fixture.detectChanges();
+
+      expect(host.selectedStepId()).toBe('b');
+      expect(blocks()[1].getAttribute('aria-pressed')).toBe('true');
+      expect(blocks()[0].getAttribute('aria-pressed')).toBe('false');
+    });
+
+    it('marks the block of the selected step', () => {
+      host.selectedStepId.set('a');
+      fixture.detectChanges();
+
+      expect(blocks()[0].getAttribute('aria-pressed')).toBe('true');
+    });
   });
 });

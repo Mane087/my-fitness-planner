@@ -5,6 +5,12 @@ import { flattenSteps } from '../services/workout-structure.utils';
 
 /** One block of the read-only workout profile. Ratios are fractions of the full width or height. */
 export interface WorkoutProfileBar {
+  /** Id of the interval step that the block draws. A repeated step appears once per repetition. */
+  stepId: string;
+  /** Name of the step, empty when the user has not named it. */
+  stepName: string;
+  /** Time that the block stands for, in seconds. Estimated for distance and open steps. */
+  seconds: number;
   /** Distance from the left edge, from 0 to 1. */
   startRatio: number;
   /** Share of the workout time, from 0 to 1. */
@@ -53,6 +59,9 @@ export function buildWorkoutProfile(
   return intervals.map(({ seconds, step }) => {
     const zone = resolveProfileZone(step.target);
     const bar: WorkoutProfileBar = {
+      stepId: step.id,
+      stepName: step.name,
+      seconds,
       startRatio: elapsedSeconds / totalSeconds,
       widthRatio: seconds / totalSeconds,
       heightRatio: zone === null ? NEUTRAL_HEIGHT_RATIO : zoneHeightRatio(zone),
