@@ -1,5 +1,5 @@
 export const INDEXED_DB_NAME = 'cycling_training_planner_db';
-export const INDEXED_DB_VERSION = 2;
+export const INDEXED_DB_VERSION = 3;
 
 export const IndexedDbStore = {
   AthleteProfiles: 'athlete_profiles',

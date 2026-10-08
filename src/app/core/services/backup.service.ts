@@ -2,6 +2,7 @@ import { inject, Injectable } from '@angular/core';
 
 import {
   BACKUP_SCHEMA_VERSION,
+  SUPPORTED_BACKUP_SCHEMA_VERSIONS,
   backupHeaderSchema,
   backupSchema,
   type Backup,
@@ -95,9 +96,9 @@ function parseBackup(content: string): Backup {
     throw new BackupImportError('El archivo no es un respaldo de MyFitnessPlanner.');
   }
 
-  if (header.data.schemaVersion !== BACKUP_SCHEMA_VERSION) {
+  if (!isSupportedVersion(header.data.schemaVersion)) {
     throw new BackupImportError(
-      `El respaldo es de la versión ${header.data.schemaVersion} y esta aplicación solo acepta la versión ${BACKUP_SCHEMA_VERSION}.`,
+      `El respaldo es de la versión ${header.data.schemaVersion} y esta aplicación solo acepta las versiones ${SUPPORTED_BACKUP_SCHEMA_VERSIONS.join(' y ')}.`,
     );
   }
 
@@ -112,6 +113,10 @@ function parseBackup(content: string): Backup {
   }
 
   return result.data;
+}
+
+function isSupportedVersion(version: number): boolean {
+  return (SUPPORTED_BACKUP_SCHEMA_VERSIONS as readonly number[]).includes(version);
 }
 
 const STORE_LABELS: Record<string, string> = {

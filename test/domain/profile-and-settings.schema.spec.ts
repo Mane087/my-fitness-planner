@@ -56,4 +56,19 @@ describe('appSettingsSchema', () => {
     expect(appSettingsSchema.safeParse(settings).success).toBe(true);
     expect(appSettingsSchema.safeParse({ ...settings, timeFormat: '48h' }).success).toBe(false);
   });
+
+  it('defaults the theme to system and rejects unknown themes', () => {
+    const settings = {
+      id: 'settings',
+      calendarDefaultView: 'month',
+      weekStartsOn: 'monday',
+      timeFormat: '24h',
+      createdAt: TIMESTAMP,
+      updatedAt: TIMESTAMP,
+    };
+
+    expect(appSettingsSchema.parse(settings).theme).toBe('system');
+    expect(appSettingsSchema.parse({ ...settings, theme: 'dark' }).theme).toBe('dark');
+    expect(appSettingsSchema.safeParse({ ...settings, theme: 'sepia' }).success).toBe(false);
+  });
 });

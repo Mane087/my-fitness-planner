@@ -25,3 +25,13 @@ export const TimeFormat = {
 export type TimeFormat = (typeof TimeFormat)[keyof typeof TimeFormat];
 
 export const TIME_FORMATS: readonly TimeFormat[] = Object.values(TimeFormat);
+
+export const ThemePreference = {
+  System: 'system',
+  Light: 'light',
+  Dark: 'dark',
+} as const;
+
+export type ThemePreference = (typeof ThemePreference)[keyof typeof ThemePreference];
+
+export const THEME_PREFERENCES: readonly ThemePreference[] = Object.values(ThemePreference);

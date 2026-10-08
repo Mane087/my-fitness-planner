@@ -1,0 +1,311 @@
+/*
+ * Design tokens (Figma: my-fitness-planer > Redesign > 00 · Fundamentos).
+ *
+ * 1. Primitives: Refactoring UI palette #19, 050–900 (static, same in both themes).
+ * 2. Semantic tokens: plain CSS variables on :root, overridden for the dark theme.
+ * 3. `@theme inline` exposes the semantic tokens as Tailwind utilities
+ *    (`bg-bg-canvas`, `text-text-primary`, `border-border-default`, ...) that follow the active theme.
+ *
+ * Theme selection:
+ *  - `data-theme="light" | "dark"` is set by ThemeService (and by the inline script in index.html
+ *    before the first paint).
+ *  - Without `data-theme`, the dark values apply through `prefers-color-scheme: dark`.
+ */
+
+@theme {
+  --color-indigo-050: #e0e8f9;
+  --color-indigo-100: #bed0f7;
+  --color-indigo-200: #98aeeb;
+  --color-indigo-300: #7b93db;
+  --color-indigo-400: #647acb;
+  --color-indigo-500: #4c63b6;
+  --color-indigo-600: #4055a8;
+  --color-indigo-700: #35469c;
+  --color-indigo-800: #2d3a8c;
+  --color-indigo-900: #19216c;
+
+  --color-cool-grey-050: #f5f7fa;
+  --color-cool-grey-100: #e4e7eb;
+  --color-cool-grey-200: #cbd2d9;
+  --color-cool-grey-300: #9aa5b1;
+  --color-cool-grey-400: #7b8794;
+  --color-cool-grey-500: #616e7c;
+  --color-cool-grey-600: #52606d;
+  --color-cool-grey-700: #3e4c59;
+  --color-cool-grey-800: #323f4b;
+  --color-cool-grey-900: #1f2933;
+
+  --color-green-050: #e3f9e5;
+  --color-green-100: #c1f2c7;
+  --color-green-200: #91e697;
+  --color-green-300: #51ca58;
+  --color-green-400: #31b237;
+  --color-green-500: #18981d;
+  --color-green-600: #0f8613;
+  --color-green-700: #0e7817;
+  --color-green-800: #07600e;
+  --color-green-900: #014807;
+
+  --color-yellow-050: #fffbea;
+  --color-yellow-100: #fff3c4;
+  --color-yellow-200: #fce588;
+  --color-yellow-300: #fadb5f;
+  --color-yellow-400: #f7c948;
+  --color-yellow-500: #f0b429;
+  --color-yellow-600: #de911d;
+  --color-yellow-700: #cb6e17;
+  --color-yellow-800: #b44d12;
+  --color-yellow-900: #8d2b0b;
+
+  --color-orange-050: #ffe8d9;
+  --color-orange-100: #ffd0b5;
+  --color-orange-200: #ffb088;
+  --color-orange-300: #ff9466;
+  --color-orange-400: #f9703e;
+  --color-orange-500: #f35627;
+  --color-orange-600: #de3a11;
+  --color-orange-700: #c52707;
+  --color-orange-800: #ad1d07;
+  --color-orange-900: #841003;
+
+  --color-red-050: #ffe3e3;
+  --color-red-100: #ffbdbd;
+  --color-red-200: #ff9b9b;
+  --color-red-300: #f86a6a;
+  --color-red-400: #ef4e4e;
+  --color-red-500: #e12d39;
+  --color-red-600: #cf1124;
+  --color-red-700: #ab091e;
+  --color-red-800: #8a041a;
+  --color-red-900: #610316;
+
+  --color-magenta-050: #fdebff;
+  --color-magenta-100: #f8c4fe;
+  --color-magenta-200: #f48fff;
+  --color-magenta-300: #f368fc;
+  --color-magenta-400: #ed47ed;
+  --color-magenta-500: #e019d0;
+  --color-magenta-600: #cb10b8;
+  --color-magenta-700: #b30ba3;
+  --color-magenta-800: #960888;
+  --color-magenta-900: #6e0560;
+
+  /* Typography: Inter for UI, Barlow Condensed SemiBold for metrics (`font-metric font-semibold`). */
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-metric: 'Barlow Condensed', 'Arial Narrow', ui-sans-serif, sans-serif;
+
+  /* Type styles from Figma. Usage: `text-h1`, `text-body`, `font-metric text-metric-xl` (metric styles set weight 600). */
+  --text-display: 36px;
+  --text-display--line-height: 40px;
+  --text-display--letter-spacing: -0.02em;
+  --text-display--font-weight: 700;
+  --text-h1: 24px;
+  --text-h1--line-height: 32px;
+  --text-h1--letter-spacing: -0.01em;
+  --text-h1--font-weight: 700;
+  --text-h2: 20px;
+  --text-h2--line-height: 28px;
+  --text-h2--letter-spacing: -0.005em;
+  --text-h2--font-weight: 600;
+  --text-h3: 16px;
+  --text-h3--line-height: 24px;
+  --text-h3--font-weight: 600;
+  --text-body: 14px;
+  --text-body--line-height: 20px;
+  --text-body--font-weight: 400;
+  --text-small: 12px;
+  --text-small--line-height: 16px;
+  --text-small--font-weight: 400;
+  --text-label: 12px;
+  --text-label--line-height: 16px;
+  --text-label--font-weight: 500;
+  --text-caps: 11px;
+  --text-caps--line-height: 16px;
+  --text-caps--letter-spacing: 0.06em;
+  --text-caps--font-weight: 600;
+  --text-metric-xl: 36px;
+  --text-metric-xl--line-height: 40px;
+  --text-metric-xl--font-weight: 600;
+  --text-metric-l: 24px;
+  --text-metric-l--line-height: 28px;
+  --text-metric-l--font-weight: 600;
+  --text-metric-m: 18px;
+  --text-metric-m--line-height: 24px;
+  --text-metric-m--font-weight: 600;
+
+  /*
+   * Spacing (4–96 px) and radius (4/8/12/16 px) match the Tailwind defaults:
+   * spacing 1…24 and rounded-sm / rounded-lg / rounded-xl / rounded-2xl (Figma radius sm / md / lg / xl).
+   */
+}
+
+/* ---- Semantic tokens: light ---- */
+:root {
+  color-scheme: light;
+
+  --bg-canvas: var(--color-cool-grey-050);
+  --bg-surface: #ffffff;
+  --bg-subtle: var(--color-cool-grey-100);
+  --bg-inverse: var(--color-cool-grey-900);
+
+  --border-default: var(--color-cool-grey-100);
+  --border-strong: var(--color-cool-grey-200);
+
+  --text-primary: var(--color-cool-grey-900);
+  --text-secondary: var(--color-cool-grey-600);
+  --text-tertiary: var(--color-cool-grey-400);
+  --text-accent: var(--color-indigo-700);
+  --text-on-accent: #ffffff;
+  --text-on-inverse: var(--color-cool-grey-050);
+
+  --accent-default: var(--color-indigo-600);
+  --accent-hover: var(--color-indigo-700);
+  --accent-muted: var(--color-indigo-100);
+  --accent-subtle: var(--color-indigo-050);
+
+  --status-success: var(--color-green-700);
+  --status-success-subtle: var(--color-green-050);
+  --status-warning: var(--color-yellow-800);
+  --status-warning-subtle: var(--color-yellow-050);
+  --status-danger: var(--color-red-600);
+  --status-danger-subtle: var(--color-red-050);
+
+  --zone-z1: var(--color-cool-grey-300);
+  --zone-z2: var(--color-indigo-300);
+  --zone-z3: var(--color-green-400);
+  --zone-z4: var(--color-yellow-400);
+  --zone-z5: var(--color-orange-400);
+  --zone-z6: var(--color-red-500);
+  --zone-z7: var(--color-magenta-500);
+  /* Text on a zone color always uses grey-900. */
+  --text-on-zone: var(--color-cool-grey-900);
+}
+
+/* ---- Semantic tokens: dark ---- */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg-canvas: var(--color-cool-grey-900);
+  --bg-surface: var(--color-cool-grey-800);
+  --bg-subtle: var(--color-cool-grey-700);
+  --bg-inverse: var(--color-cool-grey-050);
+
+  --border-default: var(--color-cool-grey-700);
+  --border-strong: var(--color-cool-grey-600);
+
+  --text-primary: var(--color-cool-grey-050);
+  --text-secondary: var(--color-cool-grey-300);
+  --text-tertiary: var(--color-cool-grey-400);
+  --text-accent: var(--color-indigo-200);
+  --text-on-accent: #ffffff;
+  --text-on-inverse: var(--color-cool-grey-900);
+
+  --accent-default: var(--color-indigo-500);
+  --accent-hover: var(--color-indigo-400);
+  --accent-muted: color-mix(in srgb, var(--color-indigo-300) 40%, transparent);
+  --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 18%, transparent);
+
+  --status-success: var(--color-green-300);
+  --status-success-subtle: color-mix(in srgb, var(--color-green-400) 16%, transparent);
+  --status-warning: var(--color-yellow-300);
+  --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 14%, transparent);
+  --status-danger: var(--color-red-300);
+  --status-danger-subtle: color-mix(in srgb, var(--color-red-400) 16%, transparent);
+
+  --zone-z1: var(--color-cool-grey-400);
+  --zone-z2: var(--color-indigo-300);
+  --zone-z3: var(--color-green-400);
+  --zone-z4: var(--color-yellow-400);
+  --zone-z5: var(--color-orange-400);
+  --zone-z6: var(--color-red-400);
+  --zone-z7: var(--color-magenta-400);
+  --text-on-zone: var(--color-cool-grey-900);
+}
+
+/* Same dark values when the preference is `system` and no data-theme has been applied yet. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    color-scheme: dark;
+
+    --bg-canvas: var(--color-cool-grey-900);
+    --bg-surface: var(--color-cool-grey-800);
+    --bg-subtle: var(--color-cool-grey-700);
+    --bg-inverse: var(--color-cool-grey-050);
+
+    --border-default: var(--color-cool-grey-700);
+    --border-strong: var(--color-cool-grey-600);
+
+    --text-primary: var(--color-cool-grey-050);
+    --text-secondary: var(--color-cool-grey-300);
+    --text-tertiary: var(--color-cool-grey-400);
+    --text-accent: var(--color-indigo-200);
+    --text-on-accent: #ffffff;
+    --text-on-inverse: var(--color-cool-grey-900);
+
+    --accent-default: var(--color-indigo-500);
+    --accent-hover: var(--color-indigo-400);
+    --accent-muted: color-mix(in srgb, var(--color-indigo-300) 40%, transparent);
+    --accent-subtle: color-mix(in srgb, var(--color-indigo-400) 18%, transparent);
+
+    --status-success: var(--color-green-300);
+    --status-success-subtle: color-mix(in srgb, var(--color-green-400) 16%, transparent);
+    --status-warning: var(--color-yellow-300);
+    --status-warning-subtle: color-mix(in srgb, var(--color-yellow-400) 14%, transparent);
+    --status-danger: var(--color-red-300);
+    --status-danger-subtle: color-mix(in srgb, var(--color-red-400) 16%, transparent);
+
+    --zone-z1: var(--color-cool-grey-400);
+    --zone-z2: var(--color-indigo-300);
+    --zone-z3: var(--color-green-400);
+    --zone-z4: var(--color-yellow-400);
+    --zone-z5: var(--color-orange-400);
+    --zone-z6: var(--color-red-400);
+    --zone-z7: var(--color-magenta-400);
+    --text-on-zone: var(--color-cool-grey-900);
+  }
+}
+
+@theme inline {
+  --color-bg-canvas: var(--bg-canvas);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-bg-inverse: var(--bg-inverse);
+
+  --color-border-default: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-accent: var(--text-accent);
+  --color-text-on-accent: var(--text-on-accent);
+  --color-text-on-inverse: var(--text-on-inverse);
+  --color-text-on-zone: var(--text-on-zone);
+
+  --color-accent-default: var(--accent-default);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-muted: var(--accent-muted);
+  --color-accent-subtle: var(--accent-subtle);
+
+  --color-status-success: var(--status-success);
+  --color-status-success-subtle: var(--status-success-subtle);
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-subtle: var(--status-warning-subtle);
+  --color-status-danger: var(--status-danger);
+  --color-status-danger-subtle: var(--status-danger-subtle);
+
+  --color-zone-z1: var(--zone-z1);
+  --color-zone-z2: var(--zone-z2);
+  --color-zone-z3: var(--zone-z3);
+  --color-zone-z4: var(--zone-z4);
+  --color-zone-z5: var(--zone-z5);
+  --color-zone-z6: var(--zone-z6);
+  --color-zone-z7: var(--zone-z7);
+
+  /* Elevation: 4 levels from Figma (Card, Dropdown, Drag, Modal). */
+  --shadow-elevation-1: 0 1px 3px 0 rgb(31 41 51 / 0.1), 0 1px 2px 0 rgb(31 41 51 / 0.06);
+  --shadow-elevation-2: 0 4px 6px -1px rgb(31 41 51 / 0.08), 0 2px 4px -1px rgb(31 41 51 / 0.06);
+  --shadow-elevation-3: 0 10px 15px -3px rgb(31 41 51 / 0.12), 0 4px 6px -2px rgb(31 41 51 / 0.06);
+  --shadow-elevation-4:
+    0 20px 25px -5px rgb(31 41 51 / 0.14), 0 10px 10px -5px rgb(31 41 51 / 0.05);
+}

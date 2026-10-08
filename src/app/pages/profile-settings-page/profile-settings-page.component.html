@@ -23,7 +23,7 @@
     } @else {
       <form class="flex flex-col gap-8" [formGroup]="profileForm" (ngSubmit)="saveProfile()">
         <section class="rounded-3xl bg-white p-6 text-slate-950 shadow-xl shadow-black/20">
-          <div class="grid gap-6 grid-cols-3">
+          <div class="grid grid-cols-1 gap-6 sm:grid-cols-3">
             <app-input-form
               formControlName="name"
               labelText="Usuario"

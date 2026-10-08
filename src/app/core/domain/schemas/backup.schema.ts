@@ -8,7 +8,10 @@ import { trainingZoneSetSchema } from './training-zone-set.schema';
 import { workoutTemplateSchema } from './workout-template.schema';
 
 /** Schema version written by this application. Matches INDEXED_DB_VERSION. */
-export const BACKUP_SCHEMA_VERSION = 2;
+export const BACKUP_SCHEMA_VERSION = 3;
+
+/** Versions that can be imported. Version 2 backups lack `theme`, which the settings schema defaults. */
+export const SUPPORTED_BACKUP_SCHEMA_VERSIONS = [2, BACKUP_SCHEMA_VERSION] as const;
 
 /** Only the version, so older or newer backups get a clear message before full validation. */
 export const backupHeaderSchema = z.object({
@@ -19,7 +22,7 @@ export const backupHeaderSchema = z.object({
 
 // Store names are written literally: the file format must not change when a store is renamed.
 export const backupSchema = z.object({
-  schemaVersion: z.literal(BACKUP_SCHEMA_VERSION),
+  schemaVersion: z.literal(SUPPORTED_BACKUP_SCHEMA_VERSIONS),
   exportedAt: isoDateTimeSchema,
   stores: z.object({
     scheduled_workouts: z.array(scheduledWorkoutSchema),
