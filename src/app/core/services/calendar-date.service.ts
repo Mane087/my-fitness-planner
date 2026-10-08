@@ -97,6 +97,46 @@ export class CalendarDateService {
       .replace('.', '');
   }
 
+  /** Week of the year (ISO 8601) of the date. */
+  getWeekNumber(date: string): number {
+    const day = this.parseDateOnly(date);
+    // The Thursday of the same ISO week decides the year of the week.
+    const thursday = this.addDays(day, 3 - ((day.getUTCDay() + 6) % 7));
+    const firstThursday = new Date(Date.UTC(thursday.getUTCFullYear(), 0, 4));
+    const firstWeekThursday = this.addDays(
+      firstThursday,
+      3 - ((firstThursday.getUTCDay() + 6) % 7),
+    );
+
+    return 1 + Math.round((thursday.getTime() - firstWeekThursday.getTime()) / (7 * 86_400_000));
+  }
+
+  /** Week number of the week that starts on `startDate`, taken from the middle of the week. */
+  getWeekNumberFromStart(startDate: string): number {
+    return this.getWeekNumber(this.shiftDate(startDate, 3));
+  }
+
+  /** Range for headings: `4 – 10 de mayo de 2026`, or `28 abr – 4 may 2026` across months. */
+  formatLongRange(startDate: string, endDate: string): string {
+    const start = this.parseDateOnly(startDate);
+    const end = this.parseDateOnly(endDate);
+    const month = (date: Date, style: 'long' | 'short') =>
+      new Intl.DateTimeFormat('es-ES', { month: style, timeZone: 'UTC' })
+        .format(date)
+        .replace('.', '');
+
+    if (
+      start.getUTCMonth() === end.getUTCMonth() &&
+      start.getUTCFullYear() === end.getUTCFullYear()
+    ) {
+      return `${start.getUTCDate()} – ${end.getUTCDate()} de ${month(end, 'long')} de ${end.getUTCFullYear()}`;
+    }
+
+    const startYear =
+      start.getUTCFullYear() === end.getUTCFullYear() ? '' : ` ${start.getUTCFullYear()}`;
+    return `${start.getUTCDate()} ${month(start, 'short')}${startYear} – ${end.getUTCDate()} ${month(end, 'short')} ${end.getUTCFullYear()}`;
+  }
+
   isToday(date: string): boolean {
     return date === this.today();
   }

@@ -113,4 +113,20 @@ describe('CalendarDateService', () => {
       ),
     ).toBe(false);
   });
+
+  it('calcula la semana ISO de una fecha y de una semana por su inicio', () => {
+    expect(service.getWeekNumber('2026-05-04')).toBe(19);
+    expect(service.getWeekNumber('2026-05-10')).toBe(19);
+    expect(service.getWeekNumber('2026-01-01')).toBe(1);
+    expect(service.getWeekNumber('2021-01-03')).toBe(53);
+    expect(service.getWeekNumberFromStart('2026-05-04')).toBe(19);
+    // A week that starts on Sunday takes the number of the Monday-based week that contains Wednesday.
+    expect(service.getWeekNumberFromStart('2026-05-03')).toBe(19);
+  });
+
+  it('da formato al rango de la semana para el encabezado', () => {
+    expect(service.formatLongRange('2026-05-04', '2026-05-10')).toBe('4 – 10 de mayo de 2026');
+    expect(service.formatLongRange('2026-04-27', '2026-05-03')).toBe('27 abr – 3 may 2026');
+    expect(service.formatLongRange('2025-12-29', '2026-01-04')).toBe('29 dic 2025 – 4 ene 2026');
+  });
 });
