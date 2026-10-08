@@ -1,0 +1,25 @@
+<div
+  role="radiogroup"
+  [attr.aria-label]="ariaLabel()"
+  class="inline-flex gap-0.5 rounded-lg bg-bg-subtle p-[3px]"
+>
+  @for (option of options(); track option.value; let index = $index) {
+    <button
+      type="button"
+      role="radio"
+      [attr.aria-checked]="isSelected(option)"
+      [attr.tabindex]="hasTabStop(option, index) ? 0 : -1"
+      [disabled]="isDisabled()"
+      class="cursor-pointer rounded-md px-3 py-1.5 text-label transition-colors focus-visible:ring-3 focus-visible:ring-accent-muted focus-visible:outline-none disabled:cursor-not-allowed disabled:text-text-tertiary"
+      [class]="
+        isSelected(option)
+          ? 'bg-bg-surface text-text-primary shadow-elevation-1'
+          : 'text-text-secondary hover:text-text-primary'
+      "
+      (click)="select(option)"
+      (keydown)="onKeydown($event, index)"
+    >
+      {{ option.label }}
+    </button>
+  }
+</div>

@@ -28,7 +28,7 @@ src/app/
 │   ├── services/        # Casos de uso y utilidades puras (calendario, resúmenes, respaldo, estructura)
 │   └── models/          # View models y tipos exclusivos de la UI
 ├── layouts/             # App shell y modal
-├── components/          # Componentes reutilizables (botones, inputs, select, tabla, editor de pasos)
+├── components/          # Componentes reutilizables (tabla, editor de pasos) y ui/ con los componentes del sistema de diseño
 └── pages/               # Una carpeta por ruta; cada página tiene su facade cuando orquesta varios servicios
 ```
 
@@ -80,7 +80,17 @@ Como el perfil por defecto siempre existe después de la inicialización, la pá
 
 ## Navegación
 
-`AppShellComponent` (`layouts/app-shell/`) envuelve todas las rutas con la barra de navegación principal: Calendario, Biblioteca y Perfil. El título de cada página llega por `data` de la ruta gracias a `withComponentInputBinding()`.
+`AppShellComponent` (`layouts/app-shell/`) envuelve todas las rutas con una sola navegación principal (Calendario, Biblioteca y Perfil y zonas) que se presenta de tres formas según el espacio:
+
+- **Sidebar de 232 px** en pantallas de 640 px o más. Incluye el logo y el resumen de la semana actual (`ShellWeekSummaryService`, que se recarga en cada navegación).
+- **Rail de iconos de 72 px** en `/calendar`, para ganar ancho. Los nombres accesibles se conservan.
+- **Barra inferior** en pantallas menores de 640 px.
+
+El título de cada página llega por `data` de la ruta gracias a `withComponentInputBinding()`.
+
+## Componentes del sistema de diseño
+
+Los componentes de `components/ui/` usan el prefijo `app-ui-*` y solo tokens semánticos, por lo que funcionan igual en tema claro y oscuro: `ui-button`, `ui-field`, `ui-select`, `ui-segmented-control`, `ui-chip`, `ui-tag`, `ui-zone-badge`, `ui-metric`, `ui-progress`, `ui-card`, `ui-dialog` y `ui-icon`. Los iconos son formas de Lucide incluidas en `ui-icon/icon-registry.ts` (sin dependencia externa). Cada página adopta estos componentes en su propio issue; los componentes anteriores (`button`, `input-form`, `select`, `alert` y `layouts/modal`) se retiran cuando ya no los usa ninguna página.
 
 ## Calendario
 

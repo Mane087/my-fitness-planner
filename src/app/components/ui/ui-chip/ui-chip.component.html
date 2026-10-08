@@ -1,0 +1,16 @@
+<button
+  type="button"
+  [attr.aria-pressed]="isSelected()"
+  class="inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-label transition-colors focus-visible:ring-3 focus-visible:ring-accent-muted focus-visible:outline-none"
+  [class]="
+    isSelected()
+      ? 'border-bg-inverse bg-bg-inverse text-text-on-inverse'
+      : 'border-border-strong bg-bg-surface text-text-secondary hover:bg-bg-subtle'
+  "
+  (click)="toggle()"
+>
+  @if (icon(); as iconName) {
+    <app-ui-icon [name]="iconName" [size]="14" />
+  }
+  <ng-content />
+</button>

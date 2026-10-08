@@ -1,0 +1,31 @@
+<svg
+  [attr.width]="size()"
+  [attr.height]="size()"
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="2"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  focusable="false"
+>
+  @for (shape of shapes(); track $index) {
+    @switch (shape.kind) {
+      @case ('path') {
+        <path [attr.d]="shape.d" />
+      }
+      @case ('circle') {
+        <circle [attr.cx]="shape.cx" [attr.cy]="shape.cy" [attr.r]="shape.r" />
+      }
+      @case ('rect') {
+        <rect
+          [attr.x]="shape.x"
+          [attr.y]="shape.y"
+          [attr.width]="shape.width"
+          [attr.height]="shape.height"
+          [attr.rx]="shape.rx"
+        />
+      }
+    }
+  }
+</svg>

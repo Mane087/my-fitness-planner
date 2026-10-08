@@ -1,0 +1,39 @@
+@if (isOpen()) {
+  <div class="fixed inset-0 z-50 bg-cool-grey-900/55" aria-hidden="true"></div>
+  <div
+    #backdrop
+    class="fixed inset-0 z-50 flex items-center justify-center px-4"
+    data-testid="dialog-backdrop"
+  >
+    <div
+      #surface
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+      [attr.aria-labelledby]="titleId"
+      data-testid="dialog-surface"
+      class="flex max-h-[90svh] w-full max-w-lg flex-col gap-4 overflow-y-auto rounded-2xl bg-bg-surface p-6 text-text-primary shadow-elevation-4 outline-none"
+      (keydown)="onKeydown($event)"
+    >
+      <header class="flex items-start justify-between gap-4">
+        <h2 [id]="titleId" class="text-h2 text-text-primary">{{ title() }}</h2>
+        <app-ui-button
+          variant="ghost"
+          size="sm"
+          icon="x"
+          [isIconOnly]="true"
+          ariaLabel="Cerrar"
+          (pressed)="dismissed.emit()"
+        />
+      </header>
+
+      <div class="text-body text-text-secondary">
+        <ng-content />
+      </div>
+
+      <footer class="flex justify-end gap-2 empty:hidden">
+        <ng-content select="[dialogFooter]" />
+      </footer>
+    </div>
+  </div>
+}

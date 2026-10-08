@@ -1,33 +1,58 @@
-<div class="flex min-h-svh flex-col bg-slate-950 text-slate-50">
-  <header class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/95 backdrop-blur">
-    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-      <a
-        routerLink="/"
-        class="shrink-0 text-lg font-bold tracking-tight text-slate-50 hover:text-text-focused"
+<div class="flex min-h-svh bg-bg-canvas text-text-primary">
+  <aside
+    class="fixed inset-x-0 bottom-0 z-40 sm:sticky sm:top-0 sm:flex sm:h-svh sm:shrink-0 sm:flex-col sm:gap-8 sm:border-r sm:border-border-default sm:bg-bg-surface sm:px-4 sm:py-6"
+    [class]="isRail() ? 'sm:w-18 sm:items-center' : 'sm:w-58'"
+  >
+    <a
+      routerLink="/"
+      class="hidden items-center gap-2.5 rounded-lg focus-visible:ring-3 focus-visible:ring-accent-muted focus-visible:outline-none sm:flex"
+      [class]="isRail() ? '' : 'px-2'"
+      [attr.aria-label]="isRail() ? 'MyFitnessPlanner, inicio' : null"
+    >
+      <span
+        class="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent-default text-text-on-accent"
       >
-        MyFitnessPlanner
-      </a>
+        <app-ui-icon name="zap" [size]="18" />
+      </span>
+      @if (!isRail()) {
+        <span class="text-h3 text-text-primary">MyFitnessPlanner</span>
+      }
+    </a>
 
-      <nav aria-label="Navegación principal" class="min-w-0 overflow-x-auto">
-        <ul class="flex items-center gap-1">
-          @for (item of navigationItems; track item.path) {
-            <li>
-              <a
-                [routerLink]="item.path"
-                routerLinkActive="bg-slate-800 text-text-focused"
-                ariaCurrentWhenActive="page"
-                class="block whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-text-focused"
-              >
-                {{ item.label }}
-              </a>
-            </li>
-          }
-        </ul>
-      </nav>
-    </div>
-  </header>
+    <nav
+      aria-label="Navegación principal"
+      class="flex border-t border-border-default bg-bg-surface px-4 pt-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:flex-col sm:gap-1 sm:border-t-0 sm:bg-transparent sm:p-0"
+    >
+      @for (item of navigationItems; track item.path) {
+        <a
+          [routerLink]="item.path"
+          routerLinkActive
+          #link="routerLinkActive"
+          ariaCurrentWhenActive="page"
+          class="flex flex-1 flex-col items-center justify-center gap-1 rounded-lg py-2 text-label focus-visible:ring-3 focus-visible:ring-accent-muted focus-visible:outline-none sm:flex-none sm:flex-row sm:justify-start sm:gap-3 sm:text-body"
+          [class]="
+            (link.isActive
+              ? 'text-text-accent sm:bg-accent-subtle sm:font-semibold'
+              : 'text-text-tertiary hover:bg-bg-subtle sm:text-text-secondary') +
+            (isRail() ? ' sm:size-10 sm:flex-none sm:justify-center sm:p-0' : ' sm:px-3 sm:py-2.5')
+          "
+        >
+          <app-ui-icon
+            [name]="item.icon"
+            [size]="20"
+            [class]="link.isActive ? '' : 'sm:text-text-tertiary'"
+          />
+          <span [class]="isRail() ? 'sm:sr-only' : ''">{{ item.label }}</span>
+        </a>
+      }
+    </nav>
 
-  <div class="flex-1">
+    @if (!isRail()) {
+      <app-sidebar-week-summary class="hidden sm:block" />
+    }
+  </aside>
+
+  <div class="min-w-0 flex-1 pb-20 sm:pb-0">
     <router-outlet />
   </div>
 </div>
