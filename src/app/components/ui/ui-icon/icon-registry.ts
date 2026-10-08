@@ -74,6 +74,7 @@ export const ICONS = {
     path('M12 10v4'),
   ],
   'loader-circle': [path('M21 12a9 9 0 1 1-6.219-8.56')],
+  minus: [path('M5 12h14')],
   plus: [path('M5 12h14'), path('M12 5v14')],
   search: [circle(11, 11, 8), path('m21 21-4.3-4.3')],
   'trending-up': [path('M16 7h6v6'), path('m22 7-8.5 8.5-5-5L2 17')],

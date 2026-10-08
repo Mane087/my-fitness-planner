@@ -10,16 +10,18 @@ import {
 } from '../../core/domain/schemas/workout-step.schema';
 import { IntensityMetric, STEP_PHASES, type StepPhase } from '../../core/domain/workout.enums';
 import { STEP_DURATION_TYPE_LABELS, STEP_PHASE_LABELS } from '../../core/models/workout-labels';
+import { resolveProfileZone } from '../../core/models/workout-profile';
 import { formatZone } from '../../core/models/zone-format';
 import { readNumber, readText, withOptional } from './step-input.utils';
 import type { MoveDirection } from './workout-step-operations';
+import { UiButtonComponent } from '../ui/ui-button/ui-button.component';
 
 const DEFAULT_SECONDS = 600;
 const DEFAULT_METERS = 1000;
 
 @Component({
   selector: 'app-interval-step-row',
-  imports: [RouterLink],
+  imports: [RouterLink, UiButtonComponent],
   templateUrl: './interval-step-row.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -33,10 +35,14 @@ export class IntervalStepRowComponent {
   readonly errors = input<readonly string[]>([]);
   readonly canMoveUp = input(true);
   readonly canMoveDown = input(true);
+  /** Highlights the row when the user selected this step in the profile or in the list. */
+  readonly isSelected = input(false);
 
   readonly changed = output<IntervalStep>();
   readonly moved = output<MoveDirection>();
   readonly removed = output<void>();
+  /** Emits when the user clicks or focuses the row, to sync the profile selection. */
+  readonly selected = output<void>();
 
   readonly phaseOptions = STEP_PHASES.map((phase) => ({
     value: phase,
@@ -52,6 +58,7 @@ export class IntervalStepRowComponent {
     const metric = this.metric();
     return metric !== null && metric !== IntensityMetric.Rpe && this.zoneSet() !== null;
   });
+  readonly zone = computed(() => resolveProfileZone(this.step().target));
   readonly isRpeMetric = computed(() => this.metric() === IntensityMetric.Rpe);
   readonly needsZoneSet = computed(() => {
     const metric = this.metric();

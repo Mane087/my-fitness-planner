@@ -1,4 +1,13 @@
-import { ChangeDetectionStrategy, Component, computed, input, model } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  computed,
+  inject,
+  input,
+  model,
+  signal,
+} from '@angular/core';
+import { DOCUMENT } from '@angular/common';
 
 import type { TrainingZoneSetEntity } from '../../core/domain/schemas/training-zone-set.schema';
 import {
@@ -8,13 +17,16 @@ import {
   type RepeatStep,
   type WorkoutStep,
 } from '../../core/domain/schemas/workout-step.schema';
-import { Sport, StepPhase, type IntensityMetric } from '../../core/domain/workout.enums';
-import { STEP_PHASE_LABELS } from '../../core/models/workout-labels';
+import { Sport, type IntensityMetric } from '../../core/domain/workout.enums';
+import { buildWorkoutProfile } from '../../core/models/workout-profile';
 import {
   calculateWorkoutTotals,
   estimateLeafStepSeconds,
   flattenSteps,
+  SECONDS_PER_REP,
 } from '../../core/services/workout-structure.utils';
+import { UiButtonComponent } from '../ui/ui-button/ui-button.component';
+import { WorkoutProfileComponent } from '../workout-profile/workout-profile.component';
 import { ExerciseStepRowComponent } from './exercise-step-row.component';
 import { IntervalStepRowComponent } from './interval-step-row.component';
 import { readNumber } from './step-input.utils';
@@ -29,26 +41,14 @@ import {
 } from './workout-step-operations';
 import { collectStepErrors } from './workout-step-validation';
 
-interface ChartSegment {
-  key: string;
-  label: string;
-  minutes: number;
-  percentage: number;
-  colorClass: string;
-}
-
-const PHASE_COLORS: Record<StepPhase, string> = {
-  [StepPhase.WarmUp]: 'bg-amber-400',
-  [StepPhase.Active]: 'bg-blue-600',
-  [StepPhase.Recovery]: 'bg-emerald-500',
-  [StepPhase.Rest]: 'bg-slate-400',
-  [StepPhase.CoolDown]: 'bg-violet-500',
-};
-const EXERCISE_COLOR = 'bg-orange-500';
-
 @Component({
   selector: 'app-workout-step-editor',
-  imports: [IntervalStepRowComponent, ExerciseStepRowComponent],
+  imports: [
+    IntervalStepRowComponent,
+    ExerciseStepRowComponent,
+    UiButtonComponent,
+    WorkoutProfileComponent,
+  ],
   templateUrl: './workout-step-editor.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -69,31 +69,41 @@ export class WorkoutStepEditorComponent {
       (step) => step.kind === StepKind.Interval && step.duration.type !== StepDurationType.Time,
     ),
   );
-  readonly chartSegments = computed<ChartSegment[]>(() => {
-    const segments = flattenSteps(this.steps()).map((step, index) => ({
-      key: `${step.id}-${index}`,
-      label: step.name.trim() || (step.kind === StepKind.Exercise ? 'Ejercicio' : 'Intervalo'),
-      seconds: estimateLeafStepSeconds(step),
-      colorClass: step.kind === StepKind.Exercise ? EXERCISE_COLOR : PHASE_COLORS[step.phase],
-    }));
-    const totalSeconds = segments.reduce((total, segment) => total + segment.seconds, 0);
+  /** Mobility and plyometrics are lists of exercises: they have no profile chart. */
+  readonly isIntervalSport = computed(
+    () => this.sport() !== Sport.Mobility && this.sport() !== Sport.Plyometrics,
+  );
+  readonly hasProfile = computed(
+    () =>
+      this.isIntervalSport() &&
+      buildWorkoutProfile(this.steps(), this.sport() ?? undefined).length > 0,
+  );
+  readonly profileSport = computed(() => this.sport() ?? Sport.Running);
+  readonly secondsPerRep = SECONDS_PER_REP;
+  /** Step that the user selected in the profile or in the list, to highlight both. */
+  readonly selectedStepId = signal<string | null>(null);
+  private readonly document = inject(DOCUMENT);
 
-    return totalSeconds === 0
-      ? []
-      : segments
-          .filter((segment) => segment.seconds > 0)
-          .map((segment) => ({
-            key: segment.key,
-            label: segment.label,
-            minutes: Math.round((segment.seconds / 60) * 10) / 10,
-            percentage: (segment.seconds / totalSeconds) * 100,
-            colorClass: segment.colorClass,
-          }));
-  });
-  readonly phaseLegend = Object.values(StepPhase).map((phase) => ({
-    label: STEP_PHASE_LABELS[phase],
-    colorClass: PHASE_COLORS[phase],
-  }));
+  selectStep(stepId: string | null): void {
+    this.selectedStepId.set(stepId);
+  }
+
+  /** A block of the profile selects its step and brings the row into view. */
+  selectFromProfile(stepId: string | null): void {
+    this.selectedStepId.set(stepId);
+    this.document.getElementById(`step-row-${stepId}`)?.scrollIntoView?.({ block: 'nearest' });
+  }
+
+  repeatSeconds(group: RepeatStep): number {
+    return (
+      group.repetitions *
+      group.steps.reduce((total, step) => total + estimateLeafStepSeconds(step), 0)
+    );
+  }
+
+  changeRepetitions(group: RepeatStep, delta: number): void {
+    this.update({ ...group, repetitions: Math.max(2, group.repetitions + delta) });
+  }
 
   errorsFor(stepId: string): readonly string[] {
     return this.showErrors() ? (this.errors().get(stepId) ?? []) : [];
