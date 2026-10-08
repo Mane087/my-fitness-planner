@@ -69,6 +69,8 @@ describe('CalendarPageComponent', () => {
     visibleEndDate: '2026-06-07',
     weekdays: ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'],
     weeks: [],
+    weekTotals: [],
+    weekNumbersLabel: 'Semanas 18 – 23',
     summary: {
       totalDurationMinutes: 0,
       totalDurationLabel: '-- h',
@@ -84,6 +86,15 @@ describe('CalendarPageComponent', () => {
     startDate: '2026-05-11',
     endDate: '2026-05-17',
     rangeLabel: '11 may al 17 may',
+    weekNumber: 20,
+    longRangeLabel: '11 – 17 de mayo de 2026',
+    summary: {
+      duration: { actualLabel: '0:00', plannedLabel: '0:00', percent: 0 },
+      distance: { actualLabel: '0', plannedLabel: '0', percent: 0 },
+      completed: { done: 0, total: 0, percent: 0 },
+      zones: [],
+      zonesCaption: null,
+    },
     days: [],
     userName: 'Usuario',
     ...overrides,
@@ -173,7 +184,7 @@ describe('CalendarPageComponent', () => {
     await fixture.whenStable();
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.textContent).toContain('MAYO 2026');
+    expect(fixture.nativeElement.textContent).toContain('Mayo 2026');
   });
 
   it('muestra mensaje de error cuando falla la carga', async () => {
@@ -309,8 +320,8 @@ describe('CalendarPageComponent', () => {
     expect(facade.loadWeek).toHaveBeenCalledWith('2026-05-13');
     expect(facade.goToCurrentMonth).not.toHaveBeenCalled();
     expect(fixture.nativeElement.textContent).toContain('11 may al 17 may');
-    expect(buttonByText('Semana')?.getAttribute('aria-pressed')).toBe('true');
-    expect(buttonByText('Mes')?.getAttribute('aria-pressed')).toBe('false');
+    expect(buttonByText('Semana')?.getAttribute('aria-checked')).toBe('true');
+    expect(buttonByText('Mes')?.getAttribute('aria-checked')).toBe('false');
   });
 
   it('guarda la vista y carga la semana al cambiar a Semana', async () => {
@@ -409,5 +420,95 @@ describe('CalendarPageComponent', () => {
       'No se pudo mover el entrenamiento. Intenta nuevamente.',
     );
     expect(fixture.nativeElement.textContent).not.toContain('Se movió');
+  });
+
+  it('muestra el número de semana y el rango largo en la vista semanal', async () => {
+    facade.loadDefaultView.mockResolvedValue('week');
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    await settle();
+
+    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Semana 20');
+    expect(fixture.nativeElement.textContent).toContain('11 – 17 de mayo de 2026');
+  });
+
+  it('muestra el mes y las semanas visibles en la vista mensual', async () => {
+    await settle();
+
+    expect(fixture.nativeElement.querySelector('h1')?.textContent).toContain('Mayo 2026');
+    expect(fixture.nativeElement.textContent).toContain('Semanas 18 – 23');
+  });
+
+  it('muestra el total de cada semana junto a la fila del mes', async () => {
+    const days = Array.from({ length: 7 }, (_, index) => ({
+      date: `2026-05-${String(11 + index).padStart(2, '0')}`,
+      dayOfMonth: 11 + index,
+      isToday: false,
+      isCurrentMonth: true,
+      isPast: false,
+      workouts: [],
+      hiddenWorkoutCount: 0,
+    }));
+    facade.goToCurrentMonth.mockResolvedValue(
+      buildViewModel({
+        weeks: [days],
+        weekTotals: [
+          {
+            weekNumber: 20,
+            duration: { actualLabel: '1:00', plannedLabel: '2:00', percent: 50 },
+            completedCount: 1,
+            plannedCount: 2,
+          },
+        ],
+      }),
+    );
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    await settle();
+
+    const total = fixture.nativeElement.querySelector('[data-testid="week-total-20"]');
+    expect(total.textContent).toContain('S20');
+    expect(total.textContent).toContain('1:00');
+    expect(total.textContent).toContain('/ 2:00 h');
+    expect(total.textContent).toContain('1 / 2 completados');
+    expect(total.querySelector('[role="progressbar"]').getAttribute('aria-valuenow')).toBe('50');
+  });
+
+  it('crea un entrenamiento para hoy con Nuevo entrenamiento', async () => {
+    await settle();
+
+    buttonByText('Nuevo entrenamiento')?.click();
+
+    expect(facade.createWorkoutForDate).toHaveBeenCalledWith('2026-05-13');
+  });
+
+  it('vuelve al mes actual con Hoy en la vista mensual', async () => {
+    await settle();
+    facade.goToCurrentMonth.mockClear();
+
+    buttonByText('Hoy')?.click();
+    await settle();
+
+    expect(facade.goToCurrentMonth).toHaveBeenCalledTimes(1);
+  });
+
+  it('vuelve a la semana de hoy con Hoy en la vista semanal', async () => {
+    facade.loadDefaultView.mockResolvedValue('week');
+    fixture = TestBed.createComponent(CalendarPageComponent);
+    await settle();
+    facade.loadWeek.mockClear();
+
+    buttonByText('Hoy')?.click();
+    await settle();
+
+    expect(facade.loadWeek).toHaveBeenCalledWith('2026-05-13');
+  });
+
+  it('enlaza el encabezado con Plantillas y con el respaldo del perfil', async () => {
+    await settle();
+    const hrefs = Array.from<HTMLAnchorElement>(fixture.nativeElement.querySelectorAll('a')).map(
+      (link) => link.getAttribute('href'),
+    );
+
+    expect(hrefs).toContain('/library');
+    expect(hrefs.filter((href) => href === '/profile')).toHaveLength(2);
   });
 });

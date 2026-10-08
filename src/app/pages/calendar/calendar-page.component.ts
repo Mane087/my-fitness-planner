@@ -1,5 +1,4 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 
 import { CalendarDefaultView } from '../../core/domain/calendar.enums';
@@ -12,25 +11,33 @@ import type {
   WorkoutRelocation,
 } from '../../core/models/calendar-view-models';
 import { CalendarFacade } from '../../core/services/calendar-facade.service';
-import { ButtonComponent } from '../../components/button/button.component';
-import { ModalComponent } from '../../layouts/modal/modal.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiCardComponent } from '../../components/ui/ui-card/ui-card.component';
+import { UiDialogComponent } from '../../components/ui/ui-dialog/ui-dialog.component';
+import { UiIconComponent } from '../../components/ui/ui-icon/ui-icon.component';
+import { UiProgressComponent } from '../../components/ui/ui-progress/ui-progress.component';
+import { UiSegmentedControlComponent } from '../../components/ui/ui-segmented-control/ui-segmented-control.component';
 import { CalendarWeekViewComponent } from './calendar-week-view.component';
-import { WorkoutCardComponent } from './workout-card.component';
+import { MonthWorkoutChipComponent } from './month-workout-chip.component';
+import { WeekSummaryComponent } from './week-summary.component';
 import { WorkoutDetailModalComponent } from './workout-detail-modal.component';
 
 @Component({
   selector: 'app-calendar',
   standalone: true,
   imports: [
-    NgClass,
-    ButtonComponent,
     CalendarWeekViewComponent,
-    ModalComponent,
-    WorkoutCardComponent,
+    MonthWorkoutChipComponent,
+    UiButtonComponent,
+    UiCardComponent,
+    UiDialogComponent,
+    UiIconComponent,
+    UiProgressComponent,
+    UiSegmentedControlComponent,
+    WeekSummaryComponent,
     WorkoutDetailModalComponent,
   ],
   templateUrl: './calendar-page.component.html',
-  styleUrl: './calendar-page.component.css',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CalendarPageComponent {
@@ -39,17 +46,26 @@ export class CalendarPageComponent {
 
   readonly view = signal<CalendarDefaultView>(CalendarDefaultView.Month);
   readonly viewOptions = [
-    { value: CalendarDefaultView.Month, label: 'Mes' },
     { value: CalendarDefaultView.Week, label: 'Semana' },
+    { value: CalendarDefaultView.Month, label: 'Mes' },
   ];
   readonly calendar = signal<CalendarMonthViewModel | null>(null);
   readonly week = signal<CalendarWeekViewModel | null>(null);
   readonly isLoading = signal(true);
   readonly errorMessage = signal<string | null>(null);
-  readonly userName = computed(
-    () => (this.view() === 'week' ? this.week() : this.calendar())?.userName ?? 'Usuario',
+  readonly title = computed(() => {
+    if (this.view() === 'week') {
+      const week = this.week();
+      return week ? `Semana ${week.weekNumber}` : 'Calendario';
+    }
+
+    // The month label comes in capitals (`OCTUBRE 2026`); the heading shows `Octubre 2026`.
+    const label = this.calendar()?.monthLabel;
+    return label ? label.charAt(0) + label.slice(1).toLowerCase() : 'Calendario';
+  });
+  readonly subtitle = computed(() =>
+    this.view() === 'week' ? this.week()?.longRangeLabel : this.calendar()?.weekNumbersLabel,
   );
-  readonly currentMonth = computed(() => this.calendar());
   readonly successMessage = signal<string | null>(null);
   readonly weeklySummary = signal<WeeklySummaryViewModel | null>(null);
   readonly weeklySummaryError = signal<string | null>(null);
@@ -79,6 +95,31 @@ export class CalendarPageComponent {
             : null,
     );
     void this.initialize(selectedDate);
+  }
+
+  onViewSelected(value: string | null): void {
+    const option = this.viewOptions.find((candidate) => candidate.value === value);
+    if (option) void this.setView(option.value);
+  }
+
+  goToPrevious(): Promise<void> {
+    return this.view() === CalendarDefaultView.Week
+      ? this.goToPreviousWeek()
+      : this.goToPreviousMonth();
+  }
+
+  goToNext(): Promise<void> {
+    return this.view() === CalendarDefaultView.Week ? this.goToNextWeek() : this.goToNextMonth();
+  }
+
+  goToToday(): Promise<void> {
+    return this.view() === CalendarDefaultView.Week
+      ? this.goToCurrentWeek()
+      : this.loadCurrentMonth();
+  }
+
+  createWorkout(): void {
+    this.calendarFacade.createWorkoutForDate(this.calendarFacade.today());
   }
 
   /** Switches the view and stores it as the default one. */

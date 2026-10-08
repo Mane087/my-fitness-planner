@@ -28,9 +28,9 @@ test.describe('Phone layout', () => {
     }));
     expect(gridWidths.content).toBeGreaterThan(gridWidths.visible);
 
-    // The week view stacks the days instead of scrolling.
-    await page.getByRole('button', { name: 'Semana', exact: true }).click();
-    await expect(page.getByTestId('week-day-2026-09-29')).toBeVisible();
+    // The week view is a strip of days with the list of the selected one, not seven columns.
+    await page.getByRole('radio', { name: 'Semana', exact: true }).click();
+    await expect(page.getByRole('group', { name: 'Días de la semana' })).toBeVisible();
     await expectNoHorizontalScroll(page);
 
     await page.goto('/calendar/new?date=2026-09-29');

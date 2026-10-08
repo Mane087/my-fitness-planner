@@ -47,9 +47,9 @@ test.describe('Workout completion', () => {
     await expect(dialog).toBeHidden();
 
     const card = page.getByRole('button', { name: 'Rodada de fondo, Completado' });
-    await expect(card).toContainText('Tiempo: 50 min de 1 h');
-    // The workout has no planned distance, so the card shows only the actual one.
-    await expect(card).toContainText('Distancia: 25 km');
+    // The month chip shows the planned time and the completed style; actual values are in the detail.
+    await expect(card).toContainText('1:00');
+    await expect(card).toHaveClass(/bg-status-success-subtle/);
     await expect(total).toContainText('1 de 1');
     await expect(total).toContainText('50 min');
     await expect(total).toContainText('83 %');
