@@ -1,6 +1,5 @@
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
-import { NgClass } from '@angular/common';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 
 import { readText } from '../../components/workout-step-editor/step-input.utils';
 import {
@@ -15,7 +14,10 @@ import type {
   WorkoutTemplateCardViewModel,
 } from '../../core/models/library-view-models';
 import { SPORT_LABELS, WORKOUT_CATEGORY_LABELS } from '../../core/models/workout-labels';
-import { ModalComponent } from '../../layouts/modal/modal.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiDialogComponent } from '../../components/ui/ui-dialog/ui-dialog.component';
+import { UiTagComponent } from '../../components/ui/ui-tag/ui-tag.component';
+import { WorkoutProfileComponent } from '../../components/workout-profile/workout-profile.component';
 import { LibraryFacade } from './library.facade';
 
 const SAVED_MESSAGES: Record<string, string> = {
@@ -25,7 +27,7 @@ const SAVED_MESSAGES: Record<string, string> = {
 
 @Component({
   selector: 'app-library-page',
-  imports: [NgClass, RouterLink, ModalComponent],
+  imports: [UiButtonComponent, UiDialogComponent, UiTagComponent, WorkoutProfileComponent],
   templateUrl: './library-page.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

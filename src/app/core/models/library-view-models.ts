@@ -1,3 +1,4 @@
+import type { WorkoutStep } from '../domain/schemas/workout-step.schema';
 import type { Sport, WorkoutCategory } from '../domain/workout.enums';
 
 export interface WorkoutTemplateCardViewModel {
@@ -7,10 +8,13 @@ export interface WorkoutTemplateCardViewModel {
   sportLabel: string;
   category: WorkoutCategory;
   categoryLabel: string;
-  colorClass: string;
   durationLabel: string;
   distanceLabel: string;
   stepCountLabel: string;
+  /** Steps that the card profile draws. */
+  steps: WorkoutStep[];
+  /** Text shown instead of the profile for workouts made of exercises. */
+  summaryText: string | null;
   objective: string | null;
   isArchived: boolean;
 }
