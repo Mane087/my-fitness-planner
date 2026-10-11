@@ -1,4 +1,4 @@
-import { CommonModule, Location } from '@angular/common';
+import { Location } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, signal, viewChild } from '@angular/core';
 import {
   AbstractControl,
@@ -8,8 +8,7 @@ import {
   ValidatorFn,
   Validators,
 } from '@angular/forms';
-import { InputFormComponent } from '../../components/input-form/input-form.component';
-import { WeekStartsOn } from '../../core/domain/calendar.enums';
+import { ThemePreference, WeekStartsOn } from '../../core/domain/calendar.enums';
 import { DomainValidationError } from '../../core/domain/domain-validation.error';
 import type { AthleteProfileEntity } from '../../core/domain/schemas/athlete-profile.schema';
 import {
@@ -20,14 +19,15 @@ import {
 } from '../../core/domain/workout.enums';
 import { INTENSITY_METRIC_LABELS, SPORT_LABELS } from '../../core/models/workout-labels';
 import { AthleteProfileRepository } from '../../core/repositories/athlete-profile.repository';
-import { SelectComponent } from '../../components/select/select.component';
 import { Options } from '../../core/models/option';
-import { ButtonComponent } from '../../components/button/button.component';
-import { AlertComponent } from '../../components/alert/alert.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiCardComponent } from '../../components/ui/ui-card/ui-card.component';
+import { UiFieldComponent } from '../../components/ui/ui-field/ui-field.component';
+import { UiSegmentedControlComponent } from '../../components/ui/ui-segmented-control/ui-segmented-control.component';
+import { UiSelectComponent } from '../../components/ui/ui-select/ui-select.component';
+import { ThemeService } from '../../core/services/theme.service';
 import { BackupSectionComponent } from './backup-section.component';
 import { ZoneSetsSectionComponent } from './zone-sets-section.component';
-import { AlertType } from '../../core/models/alert';
-import { RouterLink } from '@angular/router';
 
 const MIN_HEART_RATE = 100;
 const MAX_HEART_RATE = 250;
@@ -36,13 +36,12 @@ const MAX_HEART_RATE = 250;
   selector: 'app-profile-settings-page',
   standalone: true,
   imports: [
-    CommonModule,
-    InputFormComponent,
     ReactiveFormsModule,
-    RouterLink,
-    SelectComponent,
-    ButtonComponent,
-    AlertComponent,
+    UiButtonComponent,
+    UiCardComponent,
+    UiFieldComponent,
+    UiSegmentedControlComponent,
+    UiSelectComponent,
     BackupSectionComponent,
     ZoneSetsSectionComponent,
   ],
@@ -54,6 +53,7 @@ export class ProfileSettingsPageComponent {
   private readonly fb = inject(FormBuilder);
   private readonly location = inject(Location);
   private readonly athleteProfileRepository = inject(AthleteProfileRepository);
+  private readonly themeService = inject(ThemeService);
 
   readonly loading = signal(true);
   readonly saving = signal(false);
@@ -61,8 +61,14 @@ export class ProfileSettingsPageComponent {
   /** Last saved max HR, suggested as reference for new heart rate zone sets. */
   readonly savedMaxHeartRate = signal<number | null>(null);
   private readonly zoneSetsSection = viewChild(ZoneSetsSectionComponent);
-  showSuccessAlert = signal(false);
-  typeAlert = signal<AlertType>('toast-success');
+  /** Tone of `alertMessage`: errors and warnings stay until the next save, success fades. */
+  readonly messageTone = signal<'success' | 'warning' | 'danger'>('success');
+  readonly themePreference = this.themeService.preference;
+  readonly themeOptions: Options[] = [
+    { value: ThemePreference.System, label: 'Sistema' },
+    { value: ThemePreference.Light, label: 'Claro' },
+    { value: ThemePreference.Dark, label: 'Oscuro' },
+  ];
   readonly weekStartOptions: Options[] = [
     {
       label: 'Lunes',
@@ -121,12 +127,18 @@ export class ProfileSettingsPageComponent {
         updatedAt: profile.updatedAt,
       });
     } catch (error) {
+      this.messageTone.set('danger');
       this.alertMessage.set(
         this.toErrorMessage(error, 'No se pudo cargar la configuración del perfil.'),
       );
     } finally {
       this.loading.set(false);
     }
+  }
+
+  async setTheme(preference: string | null): Promise<void> {
+    if (!preference) return;
+    await this.themeService.setPreference(preference as ThemePreference);
   }
 
   cancel(): void {
@@ -146,8 +158,7 @@ export class ProfileSettingsPageComponent {
     const validationMessage = this.validateProfile();
 
     if (validationMessage) {
-      this.showSuccessAlert.set(true);
-      this.typeAlert.set('toast-warning');
+      this.messageTone.set('warning');
       this.alertMessage.set(validationMessage);
       return;
     }
@@ -160,19 +171,16 @@ export class ProfileSettingsPageComponent {
       this.savedMaxHeartRate.set(profile.maxHeartRate);
       this.profileForm.patchValue({ updatedAt: profile.updatedAt });
       this.profileForm.markAsPristine();
-      this.showSuccessAlert.set(true);
-      this.typeAlert.set('toast-success');
+      this.messageTone.set('success');
       this.alertMessage.set('Perfil guardado correctamente.');
+      this.clearMessageLater();
     } catch (error) {
       this.alertMessage.set(
         this.toErrorMessage(error, 'No se pudo guardar la configuración del perfil.'),
       );
-      this.typeAlert.set('toast-danger');
+      this.messageTone.set('danger');
     } finally {
       this.saving.set(false);
-      setTimeout(() => {
-        this.showSuccessAlert.set(false);
-      }, 3000);
     }
   }
 
@@ -214,8 +222,10 @@ export class ProfileSettingsPageComponent {
     return '';
   }
 
-  closeSuccessAlert(value: boolean): void {
-    this.showSuccessAlert.set(value);
+  private clearMessageLater(): void {
+    setTimeout(() => {
+      if (this.messageTone() === 'success') this.alertMessage.set('');
+    }, 3000);
   }
 
   private buildProfileEntity(): AthleteProfileEntity {

@@ -49,6 +49,26 @@ test.describe('Theme', () => {
     expect(await readCanvasColor(page)).not.toBe(darkCanvas);
   });
 
+  test('changes the theme from the profile page and keeps it after a reload', async ({ page }) => {
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.goto('/profile');
+    await expectTheme(page, 'light');
+
+    const themes = page.getByRole('radiogroup', { name: 'Tema' });
+    await expect(themes.getByRole('radio', { name: 'Sistema' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    await themes.getByRole('radio', { name: 'Oscuro' }).click();
+    await expectTheme(page, 'dark');
+
+    await page.reload();
+    await expectTheme(page, 'dark');
+    await expect(
+      page.getByRole('radiogroup', { name: 'Tema' }).getByRole('radio', { name: 'Oscuro' }),
+    ).toHaveAttribute('aria-checked', 'true');
+  });
+
   test('keeps the saved preference over the system scheme after a reload', async ({ page }) => {
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto('/');

@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, convertToParamMap, provideRouter } from '@angul
 import type { WorkoutTemplateCardViewModel } from '../../src/app/core/models/library-view-models';
 import { LibraryFacade } from '../../src/app/pages/library/library.facade';
 import { LibraryPageComponent } from '../../src/app/pages/library/library-page.component';
-import { scheduledWorkout } from '../domain/fixtures';
+import { exercise, interval, scheduledWorkout } from '../domain/fixtures';
 
 function template(
   overrides: Partial<WorkoutTemplateCardViewModel> = {},
@@ -16,10 +16,11 @@ function template(
     sportLabel: 'Ciclismo Ruta',
     category: 'threshold',
     categoryLabel: 'Umbral',
-    colorClass: 'border-l-red-500',
     durationLabel: '46 min',
     distanceLabel: '-- km',
     stepCountLabel: '4 pasos',
+    steps: [],
+    summaryText: null,
     objective: null,
     isArchived: false,
     ...overrides,
@@ -193,6 +194,28 @@ describe('LibraryPageComponent', () => {
     expect(link('Editar Series de umbral')).not.toBeNull();
     expect(link('Editar Series de umbral').getAttribute('href')).toBe('/library/edit/template-1');
     expect(button('Archivar Series de umbral')).not.toBeNull();
+  });
+
+  it('dibuja el perfil en las plantillas de intervalos y el texto en las de ejercicios', async () => {
+    configure({
+      hasTemplates: true,
+      templates: [
+        template({ steps: [interval('work')] }),
+        template({
+          id: 'template-2',
+          title: 'Core isométrico',
+          sport: 'isometrics',
+          steps: [exercise('plank', { measure: { type: 'hold', seconds: 30 } })],
+          summaryText: '1 ejercicio · 2 min bajo tensión',
+        }),
+      ],
+    });
+    await render();
+
+    const [intervals, exercises] = Array.from(element.querySelectorAll('article'));
+    expect(intervals?.querySelector('app-workout-profile svg')).not.toBeNull();
+    expect(exercises?.querySelector('app-workout-profile')).toBeNull();
+    expect(exercises?.textContent).toContain('1 ejercicio · 2 min bajo tensión');
   });
 
   it('muestra el mensaje de filtros vacíos cuando la biblioteca tiene plantillas pero el filtro no arroja resultados', async () => {

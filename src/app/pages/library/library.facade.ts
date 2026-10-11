@@ -9,7 +9,6 @@ import type {
 import {
   SPORT_LABELS,
   SPORT_MODALITY_LABELS,
-  WORKOUT_CATEGORY_COLOR_CLASSES,
   WORKOUT_CATEGORY_LABELS,
 } from '../../core/models/workout-labels';
 import { WorkoutTemplateRepository } from '../../core/repositories/workout-template.repository';
@@ -71,16 +70,15 @@ export class LibraryFacade {
         : sportLabel,
       category: template.category,
       categoryLabel: WORKOUT_CATEGORY_LABELS[template.category],
-      colorClass: WORKOUT_CATEGORY_COLOR_CLASSES[template.category],
       durationLabel: this.calendarDate.formatDuration(
         Math.round(template.plannedDurationSeconds / 60),
       ),
       distanceLabel: this.calendarDate.formatDistance(
         template.plannedDistanceMeters !== undefined ? template.plannedDistanceMeters / 1000 : null,
       ),
-      stepCountLabel: isExerciseSport(template.sport)
-        ? formatExerciseSummary(template.steps)
-        : `${stepCount} ${stepCount === 1 ? 'paso' : 'pasos'}`,
+      stepCountLabel: `${stepCount} ${stepCount === 1 ? 'paso' : 'pasos'}`,
+      steps: template.steps,
+      summaryText: isExerciseSport(template.sport) ? formatExerciseSummary(template.steps) : null,
       objective: template.objective ?? null,
       isArchived: template.isArchived,
     };

@@ -21,7 +21,8 @@ import { INTENSITY_METRIC_LABELS, SPORT_LABELS } from '../../core/models/workout
 import { formatZoneValue, parsePace } from '../../core/models/zone-format';
 import { cloneValue } from '../../core/repositories/repository-utils';
 import { TrainingZoneSetService } from '../../core/services/training-zone-set.service';
-import { ModalComponent } from '../../layouts/modal/modal.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiDialogComponent } from '../../components/ui/ui-dialog/ui-dialog.component';
 
 type PendingAction = 'regenerate' | 'delete';
 
@@ -39,13 +40,24 @@ const VALUE_UNITS: Record<ZoneMetric, string> = {
 
 const DEFAULT_ZONE_WIDTH = 10;
 
+/** Static class names so Tailwind detects them. Zones beyond the seventh reuse the last color. */
+const ZONE_DOT_CLASSES = [
+  'bg-zone-z1',
+  'bg-zone-z2',
+  'bg-zone-z3',
+  'bg-zone-z4',
+  'bg-zone-z5',
+  'bg-zone-z6',
+  'bg-zone-z7',
+];
+
 /**
  * Edits one zone set. Each zone is shown by intensity: it starts where the previous zone ends.
  * For pace the start is the slower value (`maxValue`) and the end the faster one (`minValue`).
  */
 @Component({
   selector: 'app-zone-set-editor',
-  imports: [ModalComponent],
+  imports: [UiButtonComponent, UiDialogComponent],
   templateUrl: './zone-set-editor.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
@@ -75,12 +87,21 @@ export class ZoneSetEditorComponent {
   readonly title = computed(
     () => `${SPORT_LABELS[this.sport()]} · ${INTENSITY_METRIC_LABELS[this.metric()]}`,
   );
+  readonly confirmTitle = computed(() =>
+    this.pendingAction() === 'regenerate'
+      ? `¿Recalcular las zonas de ${this.title()}?`
+      : `¿Eliminar las zonas de ${this.title()}?`,
+  );
   readonly referenceLabel = computed(() => REFERENCE_LABELS[this.metric()]);
   readonly unit = computed(() => VALUE_UNITS[this.metric()]);
   readonly isPace = computed(() => this.metric() === IntensityMetric.Pace);
   readonly hasChanges = computed(
     () => JSON.stringify(this.zones()) !== JSON.stringify(this.zoneSet()?.zones ?? []),
   );
+
+  zoneDotClass(index: number): string {
+    return ZONE_DOT_CLASSES[Math.min(index, ZONE_DOT_CLASSES.length - 1)] ?? '';
+  }
 
   startOf(zone: TrainingZone): string {
     return formatZoneValue(this.isPace() ? zone.maxValue : zone.minValue, this.metric());

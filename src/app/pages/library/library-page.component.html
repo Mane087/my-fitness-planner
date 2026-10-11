@@ -1,64 +1,59 @@
-<main class="min-h-screen bg-slate-900 px-4 py-6 text-slate-50">
-  <section class="mx-auto flex w-full flex-col gap-4 lg:max-w-3/4" aria-labelledby="library-title">
-    <header class="flex flex-wrap items-center justify-between gap-3">
+<main class="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 text-text-primary md:px-8">
+  <section class="flex flex-col gap-6" aria-labelledby="library-title">
+    <header class="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 id="library-title" class="text-3xl font-bold">Biblioteca de entrenamientos</h1>
-        <p class="mt-1 text-slate-300">
+        <h1 id="library-title" class="text-h1 text-text-primary">Biblioteca de entrenamientos</h1>
+        <p class="mt-1 text-body text-text-secondary">
           Crea un entrenamiento una vez y prográmalo las veces que quieras.
         </p>
       </div>
-      <a
-        routerLink="/library/new"
-        class="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
-        >Nueva plantilla</a
-      >
+      <app-ui-button kind="link" link="/library/new" icon="plus">Nueva plantilla</app-ui-button>
     </header>
 
     @if (statusMessage()) {
       <p
-        class="rounded-2xl border border-emerald-700 bg-emerald-950/40 p-4 text-emerald-100"
+        class="rounded-xl border border-status-success bg-status-success-subtle p-4 text-status-success"
         role="status"
       >
         {{ statusMessage() }}
       </p>
     }
     @if (errorMessage()) {
-      <p class="rounded-2xl border border-red-900/60 bg-red-950/30 p-4 text-red-200" role="alert">
+      <p
+        class="rounded-xl border border-status-danger bg-status-danger-subtle p-4 text-status-danger"
+        role="alert"
+      >
         {{ errorMessage() }}
       </p>
     }
 
     @if (isLoading()) {
-      <p class="rounded-2xl border border-slate-800 bg-slate-950/70 p-6 text-slate-300">
-        Cargando biblioteca...
-      </p>
+      <p class="rounded-xl bg-bg-surface p-6 text-text-secondary">Cargando biblioteca...</p>
     } @else if (!hasTemplates()) {
       <div
-        class="flex flex-col items-start gap-3 rounded-3xl border border-dashed border-slate-700 bg-slate-950/70 p-6"
+        class="flex flex-col items-start gap-3 rounded-xl border border-dashed border-border-strong bg-bg-surface p-6"
       >
-        <h2 class="text-xl font-bold">Todavía no tienes plantillas</h2>
-        <p class="text-slate-300">
+        <h2 class="text-h2 text-text-primary">Todavía no tienes plantillas</h2>
+        <p class="text-body text-text-secondary">
           Guarda aquí tus entrenamientos recurrentes, como tus series de umbral o tu rutina de
           movilidad, y prográmalos en el calendario sin volver a capturarlos. También puedes usar
           "Guardar como plantilla" al editar un entrenamiento.
         </p>
-        <a
-          routerLink="/library/new"
-          class="rounded-xl bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-500"
-          >Crear la primera plantilla</a
+        <app-ui-button kind="link" link="/library/new" icon="plus"
+          >Crear la primera plantilla</app-ui-button
         >
       </div>
     } @else {
       <div
-        class="flex flex-col gap-3 rounded-3xl border border-slate-800 bg-slate-950/70 p-4 sm:flex-row sm:flex-wrap sm:items-end"
+        class="flex flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-4 shadow-elevation-1 sm:flex-row sm:flex-wrap sm:items-end"
         role="search"
         aria-label="Filtrar plantillas"
       >
-        <label class="flex flex-col gap-1" for="library-sport">
-          <span class="text-sm font-semibold text-slate-300">Deporte</span>
+        <label class="flex flex-col gap-1.5" for="library-sport">
+          <span class="text-label text-text-secondary">Deporte</span>
           <select
             id="library-sport"
-            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            class="min-h-10 rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
             (change)="setSport($event)"
           >
             <option value="" [selected]="filters().sport === null">Todos</option>
@@ -69,11 +64,11 @@
             }
           </select>
         </label>
-        <label class="flex flex-col gap-1" for="library-category">
-          <span class="text-sm font-semibold text-slate-300">Categoría</span>
+        <label class="flex flex-col gap-1.5" for="library-category">
+          <span class="text-label text-text-secondary">Categoría</span>
           <select
             id="library-category"
-            class="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2"
+            class="min-h-10 rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
             (change)="setCategory($event)"
           >
             <option value="" [selected]="filters().category === null">Todas</option>
@@ -84,11 +79,14 @@
             }
           </select>
         </label>
-        <label class="flex items-center gap-2 py-2" for="library-archived">
+        <label
+          class="flex items-center gap-2 py-2 text-body text-text-primary"
+          for="library-archived"
+        >
           <input
             id="library-archived"
             type="checkbox"
-            class="h-4 w-4"
+            class="h-4 w-4 accent-accent-default"
             [checked]="filters().shouldIncludeArchived"
             (change)="setShowArchived($event)"
           />
@@ -100,74 +98,81 @@
         @for (template of templates(); track template.id) {
           <li>
             <article
-              class="flex h-full flex-col gap-3 rounded-2xl border border-l-4 border-slate-800 bg-slate-950/70 p-4"
-              [ngClass]="template.colorClass"
+              class="flex h-full flex-col gap-3 rounded-xl border border-border-default bg-bg-surface p-4 shadow-elevation-1"
               [class.opacity-60]="template.isArchived"
               [attr.aria-labelledby]="'template-' + template.id"
             >
-              <div>
-                <p class="text-xs font-bold uppercase tracking-wide text-slate-400">
+              <div class="flex flex-col gap-1">
+                <p class="text-caps text-text-tertiary">
                   {{ template.sportLabel }} · {{ template.categoryLabel }}
                 </p>
-                <h2 [id]="'template-' + template.id" class="mt-1 text-lg font-semibold">
+                <h2 [id]="'template-' + template.id" class="text-h3 text-text-primary">
                   {{ template.title }}
                 </h2>
                 @if (template.isArchived) {
-                  <span
-                    class="mt-1 inline-block rounded-full bg-slate-700 px-2 text-xs font-bold text-slate-200"
-                    >Archivada</span
-                  >
+                  <app-ui-tag class="w-fit">Archivada</app-ui-tag>
                 }
               </div>
-              <p class="text-sm text-slate-300">
+
+              @if (template.summaryText) {
+                <p class="rounded-md bg-bg-subtle px-2 py-1.5 text-label text-text-secondary">
+                  {{ template.summaryText }}
+                </p>
+              } @else {
+                <app-workout-profile
+                  class="h-11 w-full"
+                  [steps]="template.steps"
+                  [sport]="template.sport"
+                />
+              }
+
+              <p class="text-small text-text-secondary">
                 {{ template.durationLabel }} · {{ template.distanceLabel }} ·
                 {{ template.stepCountLabel }}
               </p>
               @if (template.objective) {
-                <p class="text-sm text-slate-400">{{ template.objective }}</p>
+                <p class="text-small text-text-tertiary">{{ template.objective }}</p>
               }
               <div class="mt-auto flex flex-wrap gap-2">
                 @if (!template.isArchived) {
-                  <button
-                    type="button"
-                    class="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500"
-                    [attr.aria-label]="'Programar ' + template.title"
-                    (click)="openSchedule(template)"
+                  <app-ui-button
+                    size="sm"
+                    [ariaLabel]="'Programar ' + template.title"
+                    (pressed)="openSchedule(template)"
+                    >Programar</app-ui-button
                   >
-                    Programar
-                  </button>
                 }
-                <a
-                  class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
-                  [routerLink]="['/library', 'edit', template.id]"
-                  [attr.aria-label]="'Editar ' + template.title"
-                  >Editar</a
+                <app-ui-button
+                  kind="link"
+                  size="sm"
+                  variant="secondary"
+                  [link]="['/library', 'edit', template.id]"
+                  [ariaLabel]="'Editar ' + template.title"
+                  >Editar</app-ui-button
                 >
                 @if (template.isArchived) {
-                  <button
-                    type="button"
-                    class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
-                    [attr.aria-label]="'Restaurar ' + template.title"
-                    (click)="restore(template)"
+                  <app-ui-button
+                    size="sm"
+                    variant="secondary"
+                    [ariaLabel]="'Restaurar ' + template.title"
+                    (pressed)="restore(template)"
+                    >Restaurar</app-ui-button
                   >
-                    Restaurar
-                  </button>
                 } @else {
-                  <button
-                    type="button"
-                    class="rounded-lg border border-slate-600 px-3 py-2 text-sm font-semibold hover:bg-slate-800"
-                    [attr.aria-label]="'Archivar ' + template.title"
-                    (click)="archive(template)"
+                  <app-ui-button
+                    size="sm"
+                    variant="ghost"
+                    [ariaLabel]="'Archivar ' + template.title"
+                    (pressed)="archive(template)"
+                    >Archivar</app-ui-button
                   >
-                    Archivar
-                  </button>
                 }
               </div>
             </article>
           </li>
         } @empty {
           <li
-            class="rounded-2xl border border-dashed border-slate-700 p-6 text-center text-slate-400 md:col-span-2 xl:col-span-3"
+            class="rounded-xl border border-dashed border-border-strong p-6 text-center text-text-secondary md:col-span-2 xl:col-span-3"
           >
             No hay plantillas con estos filtros.
           </li>
@@ -176,50 +181,42 @@
     }
   </section>
 
-  <app-modal
-    [showModal]="scheduling() !== null"
-    labelledBy="schedule-title"
+  <app-ui-dialog
+    [isOpen]="scheduling() !== null"
+    [title]="scheduling() ? 'Programar &quot;' + scheduling()?.title + '&quot;' : ''"
     (dismissed)="closeSchedule()"
   >
-    @if (scheduling(); as template) {
-      <h2 id="schedule-title" class="text-xl font-bold">Programar "{{ template.title }}"</h2>
-      <p class="mt-2 text-sm text-slate-600">
+    @if (scheduling()) {
+      <p class="text-small text-text-secondary">
         Se crea un entrenamiento con una copia de los pasos. Si después editas la plantilla, el
         entrenamiento programado no cambia.
       </p>
-      <label class="mt-4 flex flex-col gap-1" for="schedule-date">
-        <span class="font-semibold">Fecha</span>
+      <label class="mt-4 flex flex-col gap-1.5" for="schedule-date">
+        <span class="text-label text-text-secondary">Fecha</span>
         <input
           id="schedule-date"
           type="date"
-          class="rounded-lg border border-slate-300 px-3 py-2"
+          class="min-h-10 rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
           [value]="scheduleDate()"
           (input)="setScheduleDate($event)"
         />
       </label>
       @if (scheduleError()) {
-        <p class="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-800" role="alert">
+        <p
+          class="mt-3 rounded-lg bg-status-danger-subtle p-3 text-small text-status-danger"
+          role="alert"
+        >
           {{ scheduleError() }}
         </p>
       }
-      <div class="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <button
-          type="button"
-          class="rounded-lg border border-slate-300 px-4 py-2 font-semibold"
-          [disabled]="isScheduling()"
-          (click)="closeSchedule()"
-        >
-          Cancelar
-        </button>
-        <button
-          type="button"
-          class="rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white disabled:opacity-50"
-          [disabled]="isScheduling()"
-          (click)="confirmSchedule()"
-        >
-          {{ isScheduling() ? 'Programando...' : 'Programar' }}
-        </button>
-      </div>
     }
-  </app-modal>
+    <div dialogFooter class="flex flex-col-reverse gap-3 sm:flex-row">
+      <app-ui-button variant="secondary" [isDisabled]="isScheduling()" (pressed)="closeSchedule()"
+        >Cancelar</app-ui-button
+      >
+      <app-ui-button [isDisabled]="isScheduling()" (pressed)="confirmSchedule()">{{
+        isScheduling() ? 'Programando...' : 'Programar'
+      }}</app-ui-button>
+    </div>
+  </app-ui-dialog>
 </main>

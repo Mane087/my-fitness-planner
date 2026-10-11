@@ -129,6 +129,12 @@ La página `training-session-form-page` tiene encabezado (migas, título, etique
 - **Columna lateral**: zonas de la métrica seleccionada o escala RPE, y tarjeta de detalles (objetivo, descripción, notas).
 - **Pendiente**: todas las filas siguen editables en línea (el formulario no se limita al paso seleccionado) para conservar los selectores de los E2E; la manipulación directa del gráfico, la hoja inferior del teléfono y la vista de texto son issues aparte.
 
+## Biblioteca y perfil
+
+- **Biblioteca**: cada tarjeta de plantilla muestra el perfil de solo lectura (`app-workout-profile`) en deportes de intervalos y un texto (`summaryText`) en los de ejercicios. Programar usa `app-ui-dialog`. Los filtros siguen siendo `<select>` nativos con los ids `library-sport` y `library-category`.
+- **Perfil y zonas**: una página con tres bloques: datos del perfil (formulario con `app-ui-field` y `app-ui-select`), apariencia y zonas. La apariencia es un control segmentado (Sistema, Claro, Oscuro) que aplica el tema en cuanto se elige con `ThemeService.setPreference`, sin pasar por el botón "Guardar cambios". Las zonas y el respaldo usan los mismos componentes del sistema de diseño; cada fila de zona lleva un punto con el color de la zona (`bg-zone-z1` a `bg-zone-z7`).
+- Los mensajes de la página de perfil son párrafos en línea (`role="status"` para éxito, `role="alert"` para advertencias y errores) en lugar del `app-alert` anterior. El de éxito desaparece a los 3 s; los demás se quedan hasta el siguiente guardado.
+
 ## Migraciones
 
 `INDEXED_DB_VERSION` define la versión del esquema. `MIGRATIONS` es una lista ordenada de objetos `{ version, upgrade(database, transaction) }`. Al abrir la base con una versión mayor a la instalada, el navegador dispara `versionchange` y se ejecutan en orden todas las migraciones con `version > oldVersion`.
