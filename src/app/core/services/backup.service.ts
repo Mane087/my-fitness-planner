@@ -8,6 +8,7 @@ import {
   type Backup,
 } from '../domain/schemas/backup.schema';
 import { nowIso } from '../domain/entity-utils';
+import { upgradeLegacyBackup } from '../domain/legacy-exercise-steps';
 import { IndexedDbStore } from '../storage/indexed-db.config';
 import { IndexedDbService } from '../storage/indexed-db.service';
 
@@ -98,11 +99,11 @@ function parseBackup(content: string): Backup {
 
   if (!isSupportedVersion(header.data.schemaVersion)) {
     throw new BackupImportError(
-      `El respaldo es de la versión ${header.data.schemaVersion} y esta aplicación solo acepta las versiones ${SUPPORTED_BACKUP_SCHEMA_VERSIONS.join(' y ')}.`,
+      `El respaldo es de la versión ${header.data.schemaVersion} y esta aplicación solo acepta las versiones ${formatVersions(SUPPORTED_BACKUP_SCHEMA_VERSIONS)}.`,
     );
   }
 
-  const result = backupSchema.safeParse(data);
+  const result = backupSchema.safeParse(upgradeLegacyBackup(data));
 
   if (!result.success) {
     const issue = result.error.issues[0];
@@ -113,6 +114,13 @@ function parseBackup(content: string): Backup {
   }
 
   return result.data;
+}
+
+/** `2, 3 y 4` */
+function formatVersions(versions: readonly number[]): string {
+  return versions.length < 2
+    ? versions.join('')
+    : `${versions.slice(0, -1).join(', ')} y ${versions[versions.length - 1]}`;
 }
 
 function isSupportedVersion(version: number): boolean {

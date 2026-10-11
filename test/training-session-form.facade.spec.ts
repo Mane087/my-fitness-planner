@@ -241,7 +241,7 @@ describe('TrainingSessionFormFacade', () => {
     });
 
     it('valida series y repeticiones de los ejercicios', () => {
-      const steps = [exercise('jumps', { sets: 0, reps: 0 })];
+      const steps = [exercise('jumps', { sets: 0, measure: { type: 'reps', reps: 0 } })];
 
       const errors = facade.validate(
         buildValue({

@@ -1,5 +1,6 @@
 import { createId } from '../domain/entity-utils';
 import {
+  ExerciseMeasureType,
   StepDurationType,
   StepKind,
   type ExerciseStep,
@@ -15,6 +16,8 @@ export interface WorkoutTotals {
   distanceMeters: number | null;
   /** Steps authored by the user, without expanding repeat groups. */
   stepCount: number;
+  /** Time spent holding positions (hold exercises, both sides when `perSide`). */
+  timeUnderTensionSeconds: number;
 }
 
 /** Seconds assumed per repetition when estimating an exercise step. */
@@ -25,6 +28,7 @@ export function calculateWorkoutTotals(steps: readonly WorkoutStep[]): WorkoutTo
   let distanceMeters = 0;
   let hasDistance = false;
   let stepCount = 0;
+  let timeUnderTensionSeconds = 0;
 
   for (const step of steps) {
     if (step.kind === StepKind.Repeat) {
@@ -35,11 +39,13 @@ export function calculateWorkoutTotals(steps: readonly WorkoutStep[]): WorkoutTo
         hasDistance = true;
       }
       stepCount += childTotals.stepCount;
+      timeUnderTensionSeconds += childTotals.timeUnderTensionSeconds * step.repetitions;
       continue;
     }
 
     stepCount += 1;
     durationSeconds += estimateLeafStepSeconds(step);
+    timeUnderTensionSeconds += holdSeconds(step);
 
     if (step.kind === StepKind.Interval && step.duration.type === StepDurationType.Distance) {
       distanceMeters += step.duration.meters;
@@ -47,12 +53,35 @@ export function calculateWorkoutTotals(steps: readonly WorkoutStep[]): WorkoutTo
     }
   }
 
-  return { durationSeconds, distanceMeters: hasDistance ? distanceMeters : null, stepCount };
+  return {
+    durationSeconds,
+    distanceMeters: hasDistance ? distanceMeters : null,
+    stepCount,
+    timeUnderTensionSeconds,
+  };
+}
+
+/** Sides worked in each set: both sides one after the other when the exercise is per side. */
+export function sidesOf(step: ExerciseStep): number {
+  return step.perSide ? 2 : 1;
+}
+
+/** Seconds spent holding a position: only hold exercises count, repetitions do not. */
+export function holdSeconds(step: LeafStep): number {
+  if (step.kind !== StepKind.Exercise || step.measure.type !== ExerciseMeasureType.Hold) return 0;
+  return step.sets * step.measure.seconds * sidesOf(step);
+}
+
+/** Seconds of work of one set on one side: the hold time or reps × `SECONDS_PER_REP`. */
+function setWorkSeconds(step: ExerciseStep): number {
+  return step.measure.type === ExerciseMeasureType.Hold
+    ? step.measure.seconds
+    : step.measure.reps * SECONDS_PER_REP;
 }
 
 export function estimateLeafStepSeconds(step: LeafStep): number {
   if (step.kind === StepKind.Exercise) {
-    return step.sets * (step.reps * SECONDS_PER_REP + (step.restSeconds ?? 0));
+    return step.sets * (setWorkSeconds(step) * sidesOf(step) + (step.restSeconds ?? 0));
   }
 
   return step.duration.type === StepDurationType.Time ? step.duration.seconds : 0;
@@ -90,7 +119,7 @@ export function createExerciseStep(
     kind: StepKind.Exercise,
     name: '',
     sets: 3,
-    reps: 10,
+    measure: { type: ExerciseMeasureType.Reps, reps: 10 },
     restSeconds: 60,
     ...overrides,
   };

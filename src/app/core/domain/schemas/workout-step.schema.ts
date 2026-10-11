@@ -87,12 +87,35 @@ export const intervalStepSchema = z.object({
 
 export type IntervalStep = z.infer<typeof intervalStepSchema>;
 
+export const ExerciseMeasureType = {
+  Reps: 'reps',
+  Hold: 'hold',
+} as const;
+
+export type ExerciseMeasureType = (typeof ExerciseMeasureType)[keyof typeof ExerciseMeasureType];
+
+/** How one set of an exercise is measured: a number of repetitions or a hold time. */
+export const exerciseMeasureSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal(ExerciseMeasureType.Reps),
+    reps: z.number().int().min(1, 'Las repeticiones deben ser al menos 1.'),
+  }),
+  z.object({
+    type: z.literal(ExerciseMeasureType.Hold),
+    seconds: z.number().int().min(1, 'El tiempo de sostén debe ser al menos 1 segundo.'),
+  }),
+]);
+
+export type ExerciseMeasure = z.infer<typeof exerciseMeasureSchema>;
+
 export const exerciseStepSchema = z.object({
   id: idSchema,
   kind: z.literal(StepKind.Exercise),
   name: stepNameSchema,
   sets: z.number().int().min(1, 'Las series deben ser al menos 1.'),
-  reps: z.number().int().min(1, 'Las repeticiones deben ser al menos 1.'),
+  measure: exerciseMeasureSchema,
+  /** Unilateral exercise: each set is done on both sides, one after the other. */
+  perSide: z.boolean().optional(),
   loadKg: z.number().positive('La carga debe ser mayor que cero.').optional(),
   restSeconds: z.number().int().nonnegative('El descanso no puede ser negativo.').optional(),
   target: rpeTargetSchema.optional(),

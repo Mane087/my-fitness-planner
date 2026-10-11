@@ -2,12 +2,14 @@ import type { IndexedDbMigration, IndexedDbMigrationContext } from './indexed-db
 import { v1InitialStoresMigration } from './migrations/v1-initial-stores';
 import { v2StructuredWorkoutsMigration } from './migrations/v2-structured-workouts';
 import { v3ThemeSettingMigration } from './migrations/v3-theme-setting';
+import { v4ExerciseMeasureMigration } from './migrations/v4-exercise-measure';
 
 // Ordered by version. Append a new migration and bump INDEXED_DB_VERSION together.
 export const MIGRATIONS: readonly IndexedDbMigration[] = [
   v1InitialStoresMigration,
   v2StructuredWorkoutsMigration,
   v3ThemeSettingMigration,
+  v4ExerciseMeasureMigration,
 ];
 
 export function migrateIndexedDb(

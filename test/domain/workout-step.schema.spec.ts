@@ -103,9 +103,39 @@ describe('exerciseStepSchema', () => {
     expect(firstMessage(exerciseStepSchema.safeParse(exercise('a', { sets: 0 })))).toBe(
       'Las series deben ser al menos 1.',
     );
-    expect(firstMessage(exerciseStepSchema.safeParse(exercise('a', { reps: 0 })))).toBe(
-      'Las repeticiones deben ser al menos 1.',
-    );
+    expect(
+      firstMessage(
+        exerciseStepSchema.safeParse(exercise('a', { measure: { type: 'reps', reps: 0 } })),
+      ),
+    ).toBe('Las repeticiones deben ser al menos 1.');
+  });
+
+  it('accepts a hold measure and the per-side flag', () => {
+    const step = exercise('plank', { measure: { type: 'hold', seconds: 30 }, perSide: true });
+
+    expect(exerciseStepSchema.safeParse(step).success).toBe(true);
+  });
+
+  it('rejects a hold shorter than one second', () => {
+    expect(
+      firstMessage(
+        exerciseStepSchema.safeParse(exercise('a', { measure: { type: 'hold', seconds: 0 } })),
+      ),
+    ).toBe('El tiempo de sostén debe ser al menos 1 segundo.');
+  });
+
+  it('rejects an exercise without measure or with the old reps field only', () => {
+    const withoutMeasure: Record<string, unknown> = { ...exercise('a') };
+    delete withoutMeasure['measure'];
+
+    expect(exerciseStepSchema.safeParse(withoutMeasure).success).toBe(false);
+    expect(exerciseStepSchema.safeParse({ ...withoutMeasure, reps: 8 }).success).toBe(false);
+  });
+
+  it('rejects a measure that mixes reps and hold fields', () => {
+    const step = { ...exercise('a'), measure: { type: 'hold', reps: 8 } };
+
+    expect(exerciseStepSchema.safeParse(step).success).toBe(false);
   });
 
   it('rejects a zone target on an exercise', () => {

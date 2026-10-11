@@ -13,6 +13,7 @@ export const SPORT_LABELS: Record<Sport, string> = {
   [Sport.Running]: 'Running',
   [Sport.Mobility]: 'Movilidad',
   [Sport.Plyometrics]: 'Pliometría',
+  [Sport.Isometrics]: 'Isometría',
 };
 
 export const SPORT_MODALITY_LABELS: Record<SportModality, string> = {
