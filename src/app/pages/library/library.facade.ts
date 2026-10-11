@@ -14,6 +14,8 @@ import {
 } from '../../core/models/workout-labels';
 import { WorkoutTemplateRepository } from '../../core/repositories/workout-template.repository';
 import { CalendarDateService } from '../../core/services/calendar-date.service';
+import { isExerciseSport } from '../../core/domain/workout.enums';
+import { formatExerciseSummary } from '../../core/models/exercise-summary';
 import { calculateWorkoutTotals } from '../../core/services/workout-structure.utils';
 import { WorkoutTemplateSchedulerService } from '../../core/services/workout-template-scheduler.service';
 
@@ -76,7 +78,9 @@ export class LibraryFacade {
       distanceLabel: this.calendarDate.formatDistance(
         template.plannedDistanceMeters !== undefined ? template.plannedDistanceMeters / 1000 : null,
       ),
-      stepCountLabel: `${stepCount} ${stepCount === 1 ? 'paso' : 'pasos'}`,
+      stepCountLabel: isExerciseSport(template.sport)
+        ? formatExerciseSummary(template.steps)
+        : `${stepCount} ${stepCount === 1 ? 'paso' : 'pasos'}`,
       objective: template.objective ?? null,
       isArchived: template.isArchived,
     };

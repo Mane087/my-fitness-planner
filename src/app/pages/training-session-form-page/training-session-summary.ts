@@ -2,7 +2,7 @@ import type { WorkoutStep } from '../../core/domain/schemas/workout-step.schema'
 import { StepKind } from '../../core/domain/schemas/workout-step.schema';
 import { Sport } from '../../core/domain/workout.enums';
 import { sumSecondsByZone } from '../../core/models/workout-profile';
-import { flattenSteps } from '../../core/services/workout-structure.utils';
+import { calculateWorkoutTotals, flattenSteps } from '../../core/services/workout-structure.utils';
 
 export interface ZoneSummaryItem {
   zone: number;
@@ -16,6 +16,8 @@ export interface TrainingSessionSummary {
   totalSets: number;
   /** Repeat groups, which the exercise sports call circuits. */
   groupCount: number;
+  /** Seconds holding positions; 0 when the workout has no hold exercises. */
+  timeUnderTensionSeconds: number;
 }
 
 /** Time per zone for interval sports and exercise and set counts for the exercise sports. */
@@ -42,5 +44,6 @@ export function buildZoneSummary(
     exerciseCount: exercises.length,
     totalSets: exercises.reduce((total, step) => total + step.sets, 0),
     groupCount: steps.filter((step) => step.kind === StepKind.Repeat).length,
+    timeUnderTensionSeconds: calculateWorkoutTotals(steps).timeUnderTensionSeconds,
   };
 }

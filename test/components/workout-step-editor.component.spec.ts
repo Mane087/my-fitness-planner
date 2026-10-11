@@ -4,6 +4,7 @@ import { provideRouter } from '@angular/router';
 
 import type { TrainingZoneSetEntity } from '../../src/app/core/domain/schemas/training-zone-set.schema';
 import type {
+  ExerciseStep,
   IntervalStep,
   RepeatStep,
   WorkoutStep,
@@ -104,6 +105,67 @@ describe('WorkoutStepEditorComponent', () => {
       'Paso 3 · Repetición',
       'Paso 3.1 · Intervalo',
     ]);
+  });
+
+  describe('medida del ejercicio', () => {
+    function radio(name: string): HTMLButtonElement {
+      const match = Array.from(element.querySelectorAll<HTMLButtonElement>('[role="radio"]')).find(
+        (candidate) => candidate.textContent?.trim() === name,
+      );
+      if (!match) throw new Error(`No existe la opción "${name}".`);
+      return match;
+    }
+
+    it('cambia a tiempo de sostén con 30 s y vuelve a repeticiones con 10', async () => {
+      await setSteps([exercise('plank', { sets: 3, restSeconds: 30 })]);
+
+      radio('Tiempo de sostén').click();
+      await render();
+
+      expect((host.steps()[0] as ExerciseStep).measure).toEqual({ type: 'hold', seconds: 30 });
+      expect(field('step-plank-reps')).toBeNull();
+      expect(field('step-plank-hold')).not.toBeNull();
+
+      radio('Repeticiones').click();
+      await render();
+
+      expect((host.steps()[0] as ExerciseStep).measure).toEqual({ type: 'reps', reps: 10 });
+    });
+
+    it('guarda los segundos de sostén y muestra el tiempo bajo tensión', async () => {
+      await setSteps([
+        exercise('plank', { sets: 3, measure: { type: 'hold', seconds: 30 }, restSeconds: 20 }),
+      ]);
+      const input = field<HTMLInputElement>('step-plank-hold') as HTMLInputElement;
+
+      input.value = '45';
+      input.dispatchEvent(new Event('input'));
+      await render();
+
+      expect((host.steps()[0] as ExerciseStep).measure).toEqual({ type: 'hold', seconds: 45 });
+      expect(element.querySelector('[data-testid="exercise-hold-time"]')?.textContent).toContain(
+        '2 min 15 s',
+      );
+    });
+
+    it('marca el ejercicio por lado y duplica el tiempo bajo tensión', async () => {
+      await setSteps([
+        exercise('plank', { sets: 3, measure: { type: 'hold', seconds: 30 }, restSeconds: 20 }),
+      ]);
+
+      radio('Por lado').click();
+      await render();
+
+      expect((host.steps()[0] as ExerciseStep).perSide).toBe(true);
+      expect(element.querySelector('[data-testid="exercise-hold-time"]')?.textContent).toContain(
+        '3 min',
+      );
+
+      radio('Ambos').click();
+      await render();
+
+      expect('perSide' in (host.steps()[0] as ExerciseStep)).toBe(false);
+    });
   });
 
   it('agrega pasos dentro de una repetición sin permitir otra repetición anidada', async () => {

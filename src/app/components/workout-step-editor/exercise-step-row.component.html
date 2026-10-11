@@ -12,7 +12,7 @@
 >
   <legend class="px-2 text-h3 text-text-primary">Paso {{ position() }} · Ejercicio</legend>
 
-  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+  <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
     <label class="flex flex-col gap-1 sm:col-span-2" [for]="idPrefix() + '-name'">
       <span class="text-label text-text-secondary">Ejercicio *</span>
       <input
@@ -32,21 +32,55 @@
         type="number"
         min="1"
         [value]="step().sets"
-        (input)="setCount('sets', $event)"
+        (input)="setCount($event)"
       />
     </label>
 
-    <label class="flex flex-col gap-1" [for]="idPrefix() + '-reps'">
-      <span class="text-label text-text-secondary">Repeticiones *</span>
-      <input
-        [id]="idPrefix() + '-reps'"
-        class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
-        type="number"
-        min="1"
-        [value]="step().reps"
-        (input)="setCount('reps', $event)"
+    @if (step().measure.type === 'hold') {
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-hold'">
+        <span class="text-label text-text-secondary">Tiempo de sostén (s) *</span>
+        <input
+          [id]="idPrefix() + '-hold'"
+          class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+          type="number"
+          min="1"
+          [value]="holdSeconds()"
+          (input)="setMeasureValue($event)"
+        />
+      </label>
+    } @else {
+      <label class="flex flex-col gap-1" [for]="idPrefix() + '-reps'">
+        <span class="text-label text-text-secondary">Repeticiones *</span>
+        <input
+          [id]="idPrefix() + '-reps'"
+          class="rounded-lg border border-border-strong bg-bg-surface px-3 py-2 text-body text-text-primary focus-visible:border-accent-default focus-visible:ring-1 focus-visible:ring-accent-default focus-visible:outline-none"
+          type="number"
+          min="1"
+          [value]="reps()"
+          (input)="setMeasureValue($event)"
+        />
+      </label>
+    }
+
+    <div class="flex flex-col gap-1 sm:col-span-2 lg:col-span-2">
+      <span class="text-label text-text-secondary">Medida</span>
+      <app-ui-segmented-control
+        ariaLabel="Medida de la serie"
+        [options]="measureOptions"
+        [value]="step().measure.type"
+        (valueChange)="setMeasureType($event)"
       />
-    </label>
+    </div>
+
+    <div class="flex flex-col gap-1 sm:col-span-2 lg:col-span-2">
+      <span class="text-label text-text-secondary">Lados</span>
+      <app-ui-segmented-control
+        ariaLabel="Lados del ejercicio"
+        [options]="sideOptions"
+        [value]="step().perSide ? 'per-side' : 'both'"
+        (valueChange)="setSides($event)"
+      />
+    </div>
 
     <label class="flex flex-col gap-1" [for]="idPrefix() + '-load'">
       <span class="text-label text-text-secondary">Carga (kg)</span>
@@ -98,6 +132,12 @@
       ></textarea>
     </label>
   </div>
+
+  @if (timeUnderTensionSeconds() > 0) {
+    <p class="mt-3 text-small text-text-secondary" data-testid="exercise-hold-time">
+      Tiempo bajo tensión: {{ formatDuration(timeUnderTensionSeconds()) }}
+    </p>
+  }
 
   @if (errors().length > 0) {
     <ul class="mt-3 list-disc pl-5 text-small text-status-danger" role="alert">
