@@ -1,8 +1,10 @@
 import { DOCUMENT } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, output, signal } from '@angular/core';
 
-import { ButtonComponent } from '../../components/button/button.component';
-import { ModalComponent } from '../../layouts/modal/modal.component';
+import { UiButtonComponent } from '../../components/ui/ui-button/ui-button.component';
+import { UiCardComponent } from '../../components/ui/ui-card/ui-card.component';
+import { UiDialogComponent } from '../../components/ui/ui-dialog/ui-dialog.component';
+import { UiIconComponent } from '../../components/ui/ui-icon/ui-icon.component';
 import {
   BackupImportError,
   BackupService,
@@ -21,7 +23,7 @@ interface StatusMessage {
 
 @Component({
   selector: 'app-backup-section',
-  imports: [ButtonComponent, ModalComponent],
+  imports: [UiButtonComponent, UiCardComponent, UiDialogComponent, UiIconComponent],
   templateUrl: './backup-section.component.html',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
