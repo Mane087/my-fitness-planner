@@ -21,10 +21,10 @@ Las conversiones viven en la capa de UI. Las entidades nunca guardan minutos, ki
 ## Enums
 
 ```ts
-Sport            = 'cycling' | 'running' | 'mobility' | 'plyometrics'   // fase 2: 'strength' | 'basketball'
+Sport            = 'cycling' | 'running' | 'mobility' | 'plyometrics' | 'isometrics'   // fase 2: 'strength' | 'basketball'
 SportModality    = cycling: 'road' | 'mtb' | 'gravel' | 'indoor'
                    running: 'road' | 'trail' | 'track' | 'treadmill'
-                   (mobility y plyometrics no tienen modalidad)
+                   (mobility, plyometrics e isometrics no tienen modalidad)
 WorkoutCategory  = 'recovery' | 'endurance' | 'tempo' | 'threshold' | 'vo2max'
                  | 'technique' | 'strength' | 'power' | 'mobility' | 'free'
 IntensityMetric  = 'heart_rate' | 'power' | 'pace' | 'rpe'
@@ -41,6 +41,7 @@ WeekStartsOn     = 'monday' | 'sunday'
 | running     | recovery, endurance, tempo, threshold, vo2max, technique, free | heart_rate, pace   |
 | mobility    | mobility, recovery, free                                       | ninguna (solo RPE) |
 | plyometrics | power, strength, technique, free                               | ninguna (solo RPE) |
+| isometrics  | strength, recovery, mobility, free                             | ninguna (solo RPE) |
 
 ## Estructura de un entrenamiento
 
@@ -67,12 +68,17 @@ IntervalStep = {
   notes?: string
 }
 
+ExerciseMeasure =
+  | { type: 'reps'; reps: number }           // >= 1
+  | { type: 'hold'; seconds: number }        // >= 1, tiempo de sostén por serie
+
 ExerciseStep = {
   id: string
   kind: 'exercise'
   name: string
   sets: number                               // >= 1
-  reps: number                               // >= 1
+  measure: ExerciseMeasure
+  perSide?: boolean                          // unilateral: cada serie se hace en ambos lados
   loadKg?: number
   restSeconds?: number
   target?: { metric: 'rpe'; value: number }
@@ -119,7 +125,8 @@ WorkoutDefinition = {
 
 - Intervalo `time`: suma `seconds`. Intervalo `distance`: suma `meters` a la distancia; no suma tiempo.
 - Intervalo `open`: no suma nada.
-- Ejercicio: estimación `sets × (reps × 3 s + restSeconds)`; no suma distancia.
+- Ejercicio: estimación `sets × (trabajo × lados + restSeconds)`; no suma distancia. El trabajo de una serie es `seconds` si la medida es `hold`, o `reps × 3 s` si es `reps`. `lados` es 2 con `perSide` y 1 sin él; el descanso no se multiplica.
+- Tiempo bajo tensión (`timeUnderTensionSeconds`): solo cuentan los ejercicios `hold`, con `sets × seconds × lados`. Las repeticiones no suman. No se guarda: se calcula para el resumen del editor y para las tarjetas del calendario y la biblioteca.
 - Repetición: suma de sus pasos multiplicada por `repetitions`.
 
 El usuario puede sobrescribir `plannedDurationSeconds` cuando la estimación no aplica (por ejemplo, ejercicios con tiempo bajo tensión distinto).
@@ -264,7 +271,7 @@ AppSettingsEntity = {
 
 ```ts
 Backup = {
-  schemaVersion: 2
+  schemaVersion: 4
   exportedAt: string
   stores: {
     scheduled_workouts: ScheduledWorkoutEntity[]
@@ -275,6 +282,17 @@ Backup = {
   }
 }
 ```
+
+Se aceptan respaldos con `schemaVersion` 2, 3 y 4. Antes de validar, la importación convierte los ejercicios con `reps` (versiones anteriores a 4) en `measure: { type: 'reps', reps }`. Los respaldos de la versión 2 sin `theme` reciben el valor por defecto del esquema.
+
+### Migraciones de IndexedDB
+
+| Versión | Cambio                                                                                  |
+| ------- | --------------------------------------------------------------------------------------- |
+| 3       | `app_settings.theme` con valor `system` por defecto.                                    |
+| 4       | Ejercicios de `scheduled_workouts` y `workout_templates`: `reps` pasa a `measure.reps`. |
+
+La conversión de los ejercicios vive en `core/domain/legacy-exercise-steps.ts` y la comparten la migración v4 y la importación de respaldos.
 
 ## Ejemplos
 
@@ -315,6 +333,19 @@ Pliometría inferior · plyometrics · power · primaryMetric: rpe
 [exercise]  Skater jumps    3 sets × 12 reps   rest 60 s
 
 plannedDurationSeconds = 4×(8×3+90) + 3×(6×3+60) + 3×(12×3+60) = 456 + 234 + 288 = 978
+```
+
+### Isometría: sostén por lado y circuito
+
+```
+Core isométrico · isometrics · strength · primaryMetric: rpe
+
+[exercise]  Plancha lateral   3 sets × hold 30 s   perSide   rest 20 s
+[repeat x2]
+   [exercise]  Plancha frontal   1 set × hold 40 s   rest 10 s
+
+plannedDurationSeconds = 3×(30×2+20) + 2×(1×(40+10)) = 240 + 100 = 340
+timeUnderTensionSeconds = 3×30×2 + 2×(1×40) = 180 + 80 = 260
 ```
 
 ### Movilidad: tiempo abierto

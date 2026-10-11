@@ -7,7 +7,7 @@ import { TrainingZoneSetRepository } from '../../src/app/core/repositories/train
 import { WorkoutTemplateRepository } from '../../src/app/core/repositories/workout-template.repository';
 import { BackupImportError, BackupService } from '../../src/app/core/services/backup.service';
 import { INDEXED_DB_VERSION, IndexedDbStore } from '../../src/app/core/storage/indexed-db.config';
-import { heartRateZoneSet, scheduledWorkout, workoutTemplate } from '../domain/fixtures';
+import { exercise, heartRateZoneSet, scheduledWorkout, workoutTemplate } from '../domain/fixtures';
 import { installFakeIndexedDb } from '../storage/fake-indexeddb.helpers';
 
 describe('BackupService (fake-indexeddb)', () => {
@@ -77,8 +77,38 @@ describe('BackupService (fake-indexeddb)', () => {
       const oldBackup = { ...JSON.parse(file.content), schemaVersion: 1 };
 
       await expect(backups.importBackup(JSON.stringify(oldBackup))).rejects.toThrow(
-        'El respaldo es de la versión 1 y esta aplicación solo acepta las versiones 2 y 3.',
+        'El respaldo es de la versión 1 y esta aplicación solo acepta las versiones 2, 3 y 4.',
       );
+    });
+
+    it('imports a version 3 backup whose exercises store plain reps', async () => {
+      await workouts.create(
+        scheduledWorkout({
+          id: 'jumps',
+          scheduledDate: '2026-10-06',
+          sport: 'plyometrics',
+          modality: undefined,
+          category: 'power',
+          primaryMetric: 'rpe',
+          steps: [exercise('box')],
+        }),
+      );
+      const file = await backups.createBackupFile();
+      const backup = JSON.parse(file.content);
+      backup.schemaVersion = 3;
+      for (const workout of backup.stores[IndexedDbStore.ScheduledWorkouts]) {
+        for (const step of workout.steps) {
+          if (step.kind === 'exercise') {
+            step.reps = step.measure.reps;
+            delete step.measure;
+          }
+        }
+      }
+
+      await backups.importBackup(JSON.stringify(backup));
+
+      const imported = await workouts.findByDateRange('2026-10-06', '2026-10-06');
+      expect(imported[0]?.steps[0]).toMatchObject({ measure: { type: 'reps', reps: 8 } });
     });
 
     it('imports a version 2 backup whose settings have no theme', async () => {

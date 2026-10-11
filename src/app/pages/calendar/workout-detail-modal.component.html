@@ -87,18 +87,20 @@
               (input)="setNumber('durationMinutes', $event)"
             />
           </label>
-          <label class="flex flex-col gap-1" for="completion-distance">
-            <span class="font-semibold">Distancia real (km)</span>
-            <input
-              id="completion-distance"
-              class="rounded-lg border border-slate-300 px-3 py-2"
-              type="number"
-              min="0.01"
-              step="0.01"
-              [value]="draft().distanceKm"
-              (input)="setNumber('distanceKm', $event)"
-            />
-          </label>
+          @if (isDistanceVisible()) {
+            <label class="flex flex-col gap-1" for="completion-distance">
+              <span class="font-semibold">Distancia real (km)</span>
+              <input
+                id="completion-distance"
+                class="rounded-lg border border-slate-300 px-3 py-2"
+                type="number"
+                min="0.01"
+                step="0.01"
+                [value]="draft().distanceKm"
+                (input)="setNumber('distanceKm', $event)"
+              />
+            </label>
+          }
           <label class="flex flex-col gap-1" for="completion-rpe">
             <span class="font-semibold">RPE (1-10)</span>
             <input

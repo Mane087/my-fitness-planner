@@ -6,4 +6,5 @@ export const SPORT_ICONS: Record<Sport, IconName> = {
   [Sport.Running]: 'activity',
   [Sport.Mobility]: 'person-standing',
   [Sport.Plyometrics]: 'trending-up',
+  [Sport.Isometrics]: 'timer',
 };

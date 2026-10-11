@@ -17,7 +17,7 @@ import {
   type RepeatStep,
   type WorkoutStep,
 } from '../../core/domain/schemas/workout-step.schema';
-import { Sport, type IntensityMetric } from '../../core/domain/workout.enums';
+import { isExerciseSport, Sport, type IntensityMetric } from '../../core/domain/workout.enums';
 import { buildWorkoutProfile } from '../../core/models/workout-profile';
 import {
   calculateWorkoutTotals,
@@ -69,10 +69,8 @@ export class WorkoutStepEditorComponent {
       (step) => step.kind === StepKind.Interval && step.duration.type !== StepDurationType.Time,
     ),
   );
-  /** Mobility and plyometrics are lists of exercises: they have no profile chart. */
-  readonly isIntervalSport = computed(
-    () => this.sport() !== Sport.Mobility && this.sport() !== Sport.Plyometrics,
-  );
+  /** Exercise sports are lists of exercises: they have no profile chart. */
+  readonly isIntervalSport = computed(() => !isExerciseSport(this.sport()));
   readonly hasProfile = computed(
     () =>
       this.isIntervalSport() &&

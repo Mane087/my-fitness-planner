@@ -55,7 +55,7 @@ export function exercise(id: string, overrides: Partial<ExerciseStep> = {}): Exe
     kind: 'exercise',
     name: `Ejercicio ${id}`,
     sets: 4,
-    reps: 8,
+    measure: { type: 'reps', reps: 8 },
     restSeconds: 90,
     target: { metric: 'rpe', value: 8 },
     ...overrides,

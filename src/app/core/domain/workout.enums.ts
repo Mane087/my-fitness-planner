@@ -3,6 +3,7 @@ export const Sport = {
   Running: 'running',
   Mobility: 'mobility',
   Plyometrics: 'plyometrics',
+  Isometrics: 'isometrics',
 } as const;
 
 export type Sport = (typeof Sport)[keyof typeof Sport];
@@ -32,6 +33,7 @@ export const SPORT_MODALITIES: Record<Sport, readonly SportModality[]> = {
   running: Object.values(RunningModality),
   mobility: [],
   plyometrics: [],
+  isometrics: [],
 };
 
 export const SPORT_MODALITIES_ALL: readonly SportModality[] = [
@@ -75,7 +77,18 @@ export const WORKOUT_CATEGORIES_BY_SPORT: Record<Sport, readonly WorkoutCategory
     WorkoutCategory.Technique,
     WorkoutCategory.Free,
   ],
+  isometrics: [
+    WorkoutCategory.Strength,
+    WorkoutCategory.Recovery,
+    WorkoutCategory.Mobility,
+    WorkoutCategory.Free,
+  ],
 };
+
+/** Sports made of exercises (sets, reps or holds) instead of timed intervals: no profile chart. */
+export function isExerciseSport(sport: Sport | null): boolean {
+  return sport === Sport.Mobility || sport === Sport.Plyometrics || sport === Sport.Isometrics;
+}
 
 export const IntensityMetric = {
   HeartRate: 'heart_rate',
@@ -102,6 +115,7 @@ export const ZONE_METRICS_BY_SPORT: Record<Sport, readonly ZoneMetric[]> = {
   running: [IntensityMetric.HeartRate, IntensityMetric.Pace],
   mobility: [],
   plyometrics: [],
+  isometrics: [],
 };
 
 export function supportsZoneMetric(sport: Sport, metric: IntensityMetric): metric is ZoneMetric {
@@ -110,7 +124,7 @@ export function supportsZoneMetric(sport: Sport, metric: IntensityMetric): metri
 
 /**
  * Sport whose heart rate zone set is used for a profile. Sports without zones
- * (mobility, plyometrics) fall back to cycling.
+ * (mobility, plyometrics, isometrics) fall back to cycling.
  */
 export function resolveHeartRateZoneSport(sport: Sport): Sport {
   return supportsZoneMetric(sport, IntensityMetric.HeartRate) ? sport : Sport.Cycling;

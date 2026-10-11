@@ -35,6 +35,35 @@ describe('workoutDefinitionSchema', () => {
     expect(workoutDefinitionSchema.safeParse(definition).success).toBe(true);
   });
 
+  it('accepts an isometrics workout with hold exercises and no modality', () => {
+    const definition = cyclingDefinition({
+      title: 'Core isométrico',
+      sport: 'isometrics',
+      modality: undefined,
+      category: 'strength',
+      primaryMetric: 'rpe',
+      steps: [
+        exercise('plank', { measure: { type: 'hold', seconds: 45 } }),
+        exercise('side-plank', { measure: { type: 'hold', seconds: 30 }, perSide: true }),
+      ],
+      plannedDurationSeconds: 600,
+    });
+
+    expect(workoutDefinitionSchema.safeParse(definition).success).toBe(true);
+  });
+
+  it('rejects an isometrics workout with a category that does not apply', () => {
+    const definition = cyclingDefinition({
+      sport: 'isometrics',
+      modality: undefined,
+      category: 'vo2max',
+      primaryMetric: 'rpe',
+      steps: [exercise('plank', { measure: { type: 'hold', seconds: 45 } })],
+    });
+
+    expect(workoutDefinitionSchema.safeParse(definition).success).toBe(false);
+  });
+
   it('rejects an empty title with a Spanish message', () => {
     const result = workoutDefinitionSchema.safeParse(cyclingDefinition({ title: '' }));
 

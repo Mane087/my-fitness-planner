@@ -18,6 +18,7 @@ import type { TrainingZoneSetEntity } from '../../core/domain/schemas/training-z
 import type { WorkoutStep } from '../../core/domain/schemas/workout-step.schema';
 import {
   INTENSITY_METRICS,
+  isExerciseSport,
   IntensityMetric,
   SPORT_MODALITIES,
   SPORTS,
@@ -208,11 +209,13 @@ export class TrainingSessionFormPageComponent {
     return `${duration}${distance}`;
   });
   readonly isIntervalSport = computed(() => {
-    const sport = this.selectedSport();
-    return sport !== Sport.Mobility && sport !== Sport.Plyometrics;
+    return !isExerciseSport(this.selectedSport());
   });
   /** Figures of the summary bar. Interval sports show zones, exercise sports show sets. */
   readonly summary = computed(() => buildZoneSummary(this.steps(), this.selectedSport()));
+  readonly timeUnderTensionLabel = computed(() =>
+    formatClock(this.summary().timeUnderTensionSeconds),
+  );
   readonly durationClock = computed(() => {
     this.formChanges();
     const totals = this.facade.calculateTotals(

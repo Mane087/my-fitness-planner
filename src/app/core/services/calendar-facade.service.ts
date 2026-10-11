@@ -28,8 +28,8 @@ import { AppSettingsRepository } from '../repositories/app-settings.repository';
 import { AthleteProfileRepository } from '../repositories/athlete-profile.repository';
 import { ScheduledWorkoutRepository } from '../repositories/scheduled-workout.repository';
 import { CalendarDateService } from './calendar-date.service';
+import { formatExerciseSummary } from '../models/exercise-summary';
 import { formatClock } from './shell-week-summary.service';
-import { calculateWorkoutTotals } from './workout-structure.utils';
 import { TrainingCalendarService } from './training-calendar.service';
 import { summarize, WeeklySummaryService, type SummaryTotals } from './weekly-summary.service';
 
@@ -285,8 +285,7 @@ export class CalendarFacade {
   private toSummaryText(workout: ScheduledWorkoutEntity): string | null {
     if (buildWorkoutProfile(workout.steps, workout.sport).length > 0) return null;
 
-    const { stepCount } = calculateWorkoutTotals(workout.steps);
-    return stepCount === 1 ? '1 ejercicio' : `${stepCount} ejercicios`;
+    return formatExerciseSummary(workout.steps);
   }
 
   private toProgress(

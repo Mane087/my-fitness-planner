@@ -13,7 +13,12 @@ describe('calculateWorkoutTotals', () => {
   it('sums time intervals and multiplies repeat groups', () => {
     const totals = calculateWorkoutTotals(cyclingDefinition().steps);
 
-    expect(totals).toEqual({ durationSeconds: 2760, distanceMeters: null, stepCount: 4 });
+    expect(totals).toEqual({
+      durationSeconds: 2760,
+      distanceMeters: null,
+      stepCount: 4,
+      timeUnderTensionSeconds: 0,
+    });
   });
 
   it('sums distance intervals without adding time', () => {
@@ -23,7 +28,12 @@ describe('calculateWorkoutTotals', () => {
       interval('c', { duration: { type: 'time', seconds: 300 } }),
     ]);
 
-    expect(totals).toEqual({ durationSeconds: 300, distanceMeters: 7000, stepCount: 3 });
+    expect(totals).toEqual({
+      durationSeconds: 300,
+      distanceMeters: 7000,
+      stepCount: 3,
+      timeUnderTensionSeconds: 0,
+    });
   });
 
   it('ignores open intervals in the totals', () => {
@@ -32,25 +42,84 @@ describe('calculateWorkoutTotals', () => {
       interval('b', { duration: { type: 'time', seconds: 300 } }),
     ]);
 
-    expect(totals).toEqual({ durationSeconds: 300, distanceMeters: null, stepCount: 2 });
+    expect(totals).toEqual({
+      durationSeconds: 300,
+      distanceMeters: null,
+      stepCount: 2,
+      timeUnderTensionSeconds: 0,
+    });
   });
 
   it('estimates exercises as sets × (reps × 3 s + rest)', () => {
     const totals = calculateWorkoutTotals([
-      exercise('box', { sets: 4, reps: 8, restSeconds: 90 }),
-      exercise('broad', { sets: 3, reps: 6, restSeconds: 60 }),
-      exercise('skater', { sets: 3, reps: 12, restSeconds: 60 }),
+      exercise('box', { sets: 4, measure: { type: 'reps', reps: 8 }, restSeconds: 90 }),
+      exercise('broad', { sets: 3, measure: { type: 'reps', reps: 6 }, restSeconds: 60 }),
+      exercise('skater', { sets: 3, measure: { type: 'reps', reps: 12 }, restSeconds: 60 }),
     ]);
 
-    expect(totals).toEqual({ durationSeconds: 978, distanceMeters: null, stepCount: 3 });
+    expect(totals).toEqual({
+      durationSeconds: 978,
+      distanceMeters: null,
+      stepCount: 3,
+      timeUnderTensionSeconds: 0,
+    });
   });
 
   it('treats a missing rest as zero seconds', () => {
     const totals = calculateWorkoutTotals([
-      exercise('a', { sets: 2, reps: 5, restSeconds: undefined }),
+      exercise('a', { sets: 2, measure: { type: 'reps', reps: 5 }, restSeconds: undefined }),
     ]);
 
     expect(totals.durationSeconds).toBe(30);
+  });
+
+  it('estimates hold exercises as sets × (hold seconds + rest)', () => {
+    const totals = calculateWorkoutTotals([
+      exercise('plank', { sets: 3, measure: { type: 'hold', seconds: 45 }, restSeconds: 30 }),
+    ]);
+
+    expect(totals.durationSeconds).toBe(225);
+    expect(totals.timeUnderTensionSeconds).toBe(135);
+  });
+
+  it('doubles the work of a per-side exercise but not the rest', () => {
+    const totals = calculateWorkoutTotals([
+      exercise('side-plank', {
+        sets: 3,
+        measure: { type: 'hold', seconds: 30 },
+        perSide: true,
+        restSeconds: 20,
+      }),
+      exercise('lunge', {
+        sets: 2,
+        measure: { type: 'reps', reps: 10 },
+        perSide: true,
+        restSeconds: 30,
+      }),
+    ]);
+
+    // 3 × (30 × 2 + 20) + 2 × (10 × 3 × 2 + 30)
+    expect(totals.durationSeconds).toBe(240 + 180);
+    expect(totals.timeUnderTensionSeconds).toBe(180);
+  });
+
+  it('does not count repetitions as time under tension', () => {
+    const totals = calculateWorkoutTotals([exercise('squat', { sets: 3 })]);
+
+    expect(totals.timeUnderTensionSeconds).toBe(0);
+  });
+
+  it('multiplies time under tension inside repeat groups', () => {
+    const totals = calculateWorkoutTotals([
+      repeat('circuit', {
+        repetitions: 3,
+        steps: [
+          exercise('plank', { sets: 1, measure: { type: 'hold', seconds: 40 }, restSeconds: 0 }),
+        ],
+      }),
+    ]);
+
+    expect(totals.timeUnderTensionSeconds).toBe(120);
   });
 
   it('multiplies distance inside repeat groups', () => {
@@ -61,7 +130,12 @@ describe('calculateWorkoutTotals', () => {
       }),
     ]);
 
-    expect(totals).toEqual({ durationSeconds: 0, distanceMeters: 1600, stepCount: 1 });
+    expect(totals).toEqual({
+      durationSeconds: 0,
+      distanceMeters: 1600,
+      stepCount: 1,
+      timeUnderTensionSeconds: 0,
+    });
   });
 
   it('returns zeros for an empty list', () => {
@@ -69,6 +143,7 @@ describe('calculateWorkoutTotals', () => {
       durationSeconds: 0,
       distanceMeters: null,
       stepCount: 0,
+      timeUnderTensionSeconds: 0,
     });
   });
 });

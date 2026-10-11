@@ -34,6 +34,7 @@ const SECONDS_PER_METER: Record<Sport, number> = {
   [Sport.Running]: 0.3,
   [Sport.Mobility]: 0.3,
   [Sport.Plyometrics]: 0.3,
+  [Sport.Isometrics]: 0.3,
 };
 
 /**

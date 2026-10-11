@@ -77,6 +77,7 @@ export const ICONS = {
   minus: [path('M5 12h14')],
   plus: [path('M5 12h14'), path('M12 5v14')],
   search: [circle(11, 11, 8), path('m21 21-4.3-4.3')],
+  timer: [path('M10 2h4'), path('m12 14 3-3'), circle(12, 14, 8)],
   'trending-up': [path('M16 7h6v6'), path('m22 7-8.5 8.5-5-5L2 17')],
   'trash-2': [
     path('M3 6h18'),

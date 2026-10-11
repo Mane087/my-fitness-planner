@@ -8,10 +8,14 @@ import { trainingZoneSetSchema } from './training-zone-set.schema';
 import { workoutTemplateSchema } from './workout-template.schema';
 
 /** Schema version written by this application. Matches INDEXED_DB_VERSION. */
-export const BACKUP_SCHEMA_VERSION = 3;
+export const BACKUP_SCHEMA_VERSION = 4;
 
-/** Versions that can be imported. Version 2 backups lack `theme`, which the settings schema defaults. */
-export const SUPPORTED_BACKUP_SCHEMA_VERSIONS = [2, BACKUP_SCHEMA_VERSION] as const;
+/**
+ * Versions that can be imported. Version 2 backups lack `theme`, which the settings schema
+ * defaults. Backups before version 4 store exercises with `reps`, which the import upgrades to
+ * `measure` before validating.
+ */
+export const SUPPORTED_BACKUP_SCHEMA_VERSIONS = [2, 3, BACKUP_SCHEMA_VERSION] as const;
 
 /** Only the version, so older or newer backups get a clear message before full validation. */
 export const backupHeaderSchema = z.object({

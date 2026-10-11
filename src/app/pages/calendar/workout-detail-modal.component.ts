@@ -14,7 +14,7 @@ import {
   workoutCompletionSchema,
   type ScheduledWorkoutEntity,
 } from '../../core/domain/schemas/scheduled-workout.schema';
-import { WorkoutStatus } from '../../core/domain/workout.enums';
+import { isExerciseSport, WorkoutStatus } from '../../core/domain/workout.enums';
 import type {
   WorkoutRelocation,
   WorkoutRelocationMode,
@@ -58,6 +58,8 @@ export class WorkoutDetailModalComponent {
   private readonly calendarDate = inject(CalendarDateService);
 
   readonly workout = input<ScheduledWorkoutEntity | null>(null);
+  /** Exercise sports (mobility, plyometrics, isometrics) are not completed with a distance. */
+  readonly isDistanceVisible = computed(() => !isExerciseSport(this.workout()?.sport ?? null));
 
   /** Emits the workout after a status change so the calendar can refresh. */
   readonly changed = output<ScheduledWorkoutEntity>();
